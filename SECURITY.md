@@ -8,7 +8,7 @@ Security fixes are applied to the latest commit on `main`.
 
 Please **do not** open a public issue for security problems.
 
-Use GitHub's [private vulnerability reporting](https://github.com/ehsanhajian/ValidatorPulse/security/advisories/new) for this repository, or email the maintainer listed on the GitHub profile.
+Use GitHub's [private vulnerability reporting](https://github.com/ehsanhajian/ValidatorPulse/security/advisories/new) for this repository.
 
 Include:
 
