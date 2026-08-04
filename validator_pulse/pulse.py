@@ -8,77 +8,12 @@ from validator_pulse.alerts import (
     dispatch_alert,
     evaluate_alerts,
 )
-from validator_pulse.collectors import (
-    build_demo_consensus,
-    build_demo_infrastructure,
-    build_demo_validators,
-    collect_consensus,
-    collect_infrastructure,
-    collect_validator_balances,
-)
+from validator_pulse.chains import UnsupportedChainError, get_adapter
+from validator_pulse.collectors.infrastructure import collect_infrastructure
 from validator_pulse.config import Settings, get_settings
-from validator_pulse.models import (
-    AttestationStats,
-    ConsensusHealth,
-    ProposalStats,
-    PulseSnapshot,
-    ValidatorStats,
-)
-from validator_pulse.scoring import (
-    aggregate_fleet_metrics,
-    compute_effectiveness_score,
-    compute_slashing_risk_score,
-)
+from validator_pulse.models import PulseSnapshot
+from validator_pulse.scoring import aggregate_fleet_metrics
 from validator_pulse.store import get_alert_history, get_snapshot, set_snapshot
-
-
-async def _collect_live_validators(
-    beacon_api_url: str,
-    validator_ids: list[str],
-    consensus: ConsensusHealth,
-    infrastructure,
-) -> list[ValidatorStats]:
-    balances = await collect_validator_balances(beacon_api_url, validator_ids)
-    validators: list[ValidatorStats] = []
-    for b in balances:
-        active = "active" in (b["status"] or "")
-        attestations = AttestationStats(
-            expected=32,
-            successful=31 if active else 20,
-            missed=1 if active else 8,
-            late=0,
-        )
-        proposals = ProposalStats(expected=0, successful=0, missed=0)
-        effectiveness = compute_effectiveness_score(
-            attestations_expected=attestations.expected,
-            attestations_successful=attestations.successful,
-            attestations_late=attestations.late,
-            proposals_expected=proposals.expected,
-            proposals_successful=proposals.successful,
-        )
-        slashing_risk = compute_slashing_risk_score(
-            consecutive_missed_attestations=attestations.missed,
-            missed_proposals=proposals.missed,
-            clock_drift_ms=infrastructure.clock_drift_ms,
-            syncing=consensus.syncing,
-            peer_count=consensus.connected_peers,
-            effectiveness_score=effectiveness,
-        )
-        validators.append(
-            ValidatorStats(
-                index=b["index"],
-                pubkey=b.get("pubkey"),
-                status=b["status"],
-                balance_gwei=b["balance_gwei"],
-                effective_balance_gwei=b["effective_balance_gwei"],
-                attestations=attestations,
-                proposals=proposals,
-                rewards_gwei=max(0, b["balance_gwei"] - b["effective_balance_gwei"]),
-                effectiveness_score=effectiveness,
-                slashing_risk_score=slashing_risk,
-            )
-        )
-    return validators
 
 
 async def collect_pulse(
@@ -88,38 +23,25 @@ async def collect_pulse(
     collected_at = datetime.now(timezone.utc).isoformat()
     channels = configured_channels(settings)
 
-    if settings.is_demo():
-        consensus = build_demo_consensus()
-        host = collect_infrastructure()
-        infrastructure = build_demo_infrastructure(host)
-        demo_indices = settings.indices() or [1, 2, 3]
-        validators = build_demo_validators(
-            demo_indices, consensus, infrastructure
-        )
-    else:
-        assert settings.beacon_api_url
-        consensus = await collect_consensus(settings.beacon_api_url)
-        infrastructure = collect_infrastructure()
-        try:
-            validators = await _collect_live_validators(
-                settings.beacon_api_url,
-                settings.validator_ids(),
-                consensus,
-                infrastructure,
-            )
-        except Exception as exc:  # noqa: BLE001
-            validators = []
-            consensus = consensus.model_copy(
-                update={
-                    "status": "critical",
-                    "last_error": consensus.last_error or str(exc),
-                }
-            )
+    try:
+        adapter = get_adapter(settings.chain)
+    except UnsupportedChainError:
+        raise
+
+    infrastructure = collect_infrastructure()
+    collection = await adapter.collect(settings, infrastructure)
+    consensus = collection.consensus
+    validators = collection.operators
+    infrastructure = collection.infrastructure
+    demo_mode = adapter.is_demo(settings)
 
     metrics = aggregate_fleet_metrics(validators)
     partial = PulseSnapshot(
         collected_at=collected_at,
-        demo_mode=settings.is_demo(),
+        demo_mode=demo_mode,
+        chain=adapter.name,
+        chain_display_name=adapter.display_name,
+        operator_label=adapter.operator_label,
         verdict=build_verdict(
             {
                 "consensus": consensus,

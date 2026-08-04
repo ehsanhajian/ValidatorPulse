@@ -21,6 +21,7 @@
         </p>
       </div>
       <div class="actions">
+        <span class="chip">{{ snapshot.chain_display_name }}</span>
         {% if snapshot.demo_mode %}
         <span class="chip">Demo mode</span>
         {% endif %}
@@ -68,8 +69,8 @@
     <section class="grid-2 animate-rise-delay-2">
       <div class="panel">
         <div class="panel-head">
-          <h3>Validator monitoring</h3>
-          <span>{{ snapshot.validators|length }} validators</span>
+          <h3>{{ snapshot.operator_label|capitalize }} monitoring</h3>
+          <span>{{ snapshot.validators|length }} {{ snapshot.operator_label }}{% if snapshot.validators|length != 1 %}s{% endif %}</span>
         </div>
         <div id="validators">
           {% for v in snapshot.validators %}

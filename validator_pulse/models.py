@@ -111,6 +111,9 @@ class Verdict(BaseModel):
 class PulseSnapshot(BaseModel):
     collected_at: str
     demo_mode: bool
+    chain: str = "ethereum"
+    chain_display_name: str = "Ethereum"
+    operator_label: str = "validator"
     verdict: Verdict
     validators: list[ValidatorStats]
     consensus: ConsensusHealth

@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from validator_pulse.alerts import configured_channels, dispatch_alert
+from validator_pulse.chains import UnsupportedChainError
 from validator_pulse.config import get_settings
 from validator_pulse.metrics import to_prometheus
 from validator_pulse.models import AlertEvent
@@ -40,7 +41,13 @@ TEMPLATES.env.globals["now"] = lambda: datetime.now(timezone.utc)
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request) -> HTMLResponse:
-    snapshot = await collect_pulse(dispatch_alerts=False)
+    try:
+        snapshot = await collect_pulse(dispatch_alerts=False)
+    except UnsupportedChainError as exc:
+        return HTMLResponse(
+            f"<h1>Unsupported chain</h1><p>{exc}</p>",
+            status_code=400,
+        )
     return TEMPLATES.TemplateResponse(
         request,
         "dashboard.html",
@@ -50,13 +57,19 @@ async def dashboard(request: Request) -> HTMLResponse:
 
 @app.get("/api/status")
 async def api_status():
-    snapshot = await get_or_collect_pulse()
+    try:
+        snapshot = await get_or_collect_pulse()
+    except UnsupportedChainError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
     return snapshot.model_dump(mode="json")
 
 
 @app.get("/api/metrics")
 async def api_metrics():
-    snapshot = await get_or_collect_pulse()
+    try:
+        snapshot = await get_or_collect_pulse()
+    except UnsupportedChainError as exc:
+        return PlainTextResponse(f"# error {exc}\n", status_code=400)
     return PlainTextResponse(
         to_prometheus(snapshot),
         media_type="text/plain; version=0.0.4; charset=utf-8",
@@ -65,8 +78,15 @@ async def api_metrics():
 
 @app.post("/api/collect")
 async def api_collect():
-    snapshot = await collect_pulse(dispatch_alerts=True)
-    return {"ok": True, "collected_at": snapshot.collected_at, "snapshot": snapshot.model_dump(mode="json")}
+    try:
+        snapshot = await collect_pulse(dispatch_alerts=True)
+    except UnsupportedChainError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    return {
+        "ok": True,
+        "collected_at": snapshot.collected_at,
+        "snapshot": snapshot.model_dump(mode="json"),
+    }
 
 
 @app.post("/api/alerts/test")
