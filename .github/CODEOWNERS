@@ -1,0 +1,7 @@
+# Default owner for security-sensitive and repo policy files.
+*       @ehsanhajian
+/.github/ @ehsanhajian
+/SECURITY.md @ehsanhajian
+/.env.example @ehsanhajian
+/validator_pulse/alerts/ @ehsanhajian
+/validator_pulse/config.py @ehsanhajian

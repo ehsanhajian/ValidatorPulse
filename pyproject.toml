@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "validator-pulse"
+version = "0.1.0"
+description = "Keep blockchain validators healthy and prevent downtime and slashing."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.32.0",
+  "httpx>=0.27.0",
+  "pydantic>=2.9.0",
+  "pydantic-settings>=2.6.0",
+  "psutil>=6.0.0",
+  "jinja2>=3.1.4",
+  "python-dotenv>=1.0.1",
+]
+
+[project.scripts]
+validator-pulse = "validator_pulse.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["validator_pulse*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

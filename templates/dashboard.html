@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ValidatorPulse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="hero animate-rise">
+      <div>
+        <p class="eyebrow">Validator health</p>
+        <h1>ValidatorPulse</h1>
+        <p class="lede">
+          Keep validators healthy and prevent downtime and slashing. Answers one question:
+          is my validator operating correctly?
+        </p>
+      </div>
+      <div class="actions">
+        {% if snapshot.demo_mode %}
+        <span class="chip">Demo mode</span>
+        {% endif %}
+        <button type="button" id="refresh-btn">Refresh</button>
+        <button type="button" class="primary" id="alert-btn">Test alerts</button>
+      </div>
+    </header>
+
+    <section class="verdict animate-rise-delay-1" style="--accent: {{ status_color(snapshot.verdict.status) }}">
+      <div class="verdict-top">
+        <div>
+          <span class="pill status-{{ snapshot.verdict.status }}">
+            <span class="dot pulse-dot"></span>
+            {{ snapshot.verdict.status }}
+          </span>
+          <h2 id="verdict-answer">{{ snapshot.verdict.answer }}</h2>
+          <p id="verdict-summary">{{ snapshot.verdict.summary }}</p>
+        </div>
+        <div class="meta">
+          <div>Collected</div>
+          <div id="collected-at">{{ snapshot.collected_at }}</div>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-key">validator_effectiveness_score</div>
+          <div class="metric-value" id="m-effectiveness">{{ snapshot.metrics.validator_effectiveness_score }}<span>%</span></div>
+          <div class="metric-label">Effectiveness</div>
+        </div>
+        <div class="metric">
+          <div class="metric-key">validator_missed_attestations_total</div>
+          <div class="metric-value" id="m-missed">{{ snapshot.metrics.validator_missed_attestations_total }}</div>
+          <div class="metric-label">Missed attestations</div>
+        </div>
+        <div class="metric">
+          <div class="metric-key">validator_slashing_risk_score</div>
+          <div class="metric-value" id="m-risk">{{ snapshot.metrics.validator_slashing_risk_score }}</div>
+          <div class="metric-label">Slashing risk</div>
+        </div>
+      </div>
+    </section>
+
+    <p id="banner" class="banner" hidden></p>
+
+    <section class="grid-2 animate-rise-delay-2">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Validator monitoring</h3>
+          <span>{{ snapshot.validators|length }} validators</span>
+        </div>
+        <div id="validators">
+          {% for v in snapshot.validators %}
+          <article class="validator">
+            <div class="validator-top">
+              <div>
+                <div class="mono">#{{ v.index }}</div>
+                <div class="pubkey">{{ v.pubkey or "—" }}</div>
+              </div>
+              <div class="right">
+                <div>{{ v.status }}</div>
+                <div class="mono">{{ "%.3f"|format(v.balance_gwei / 1e9) }} ETH</div>
+              </div>
+            </div>
+            <div class="meters">
+              <div class="meter">
+                <div class="meter-row"><span>Effectiveness</span><span class="mono">{{ v.effectiveness_score }}%</span></div>
+                <div class="bar"><div class="fill ok" style="width: {{ v.effectiveness_score }}%"></div></div>
+              </div>
+              <div class="meter">
+                <div class="meter-row"><span>Slashing risk</span><span class="mono">{{ v.slashing_risk_score }}</span></div>
+                <div class="bar"><div class="fill risk" style="width: {{ [v.slashing_risk_score, 100]|min }}%"></div></div>
+              </div>
+            </div>
+            <div class="stats">
+              <div><div class="muted">Attested</div><div class="mono">{{ v.attestations.successful }}/{{ v.attestations.expected }}</div></div>
+              <div><div class="muted">Missed</div><div class="mono">{{ v.attestations.missed }}</div></div>
+              <div><div class="muted">Proposals</div><div class="mono">{{ v.proposals.successful }}/{{ v.proposals.expected or "—" }}</div></div>
+              <div><div class="muted">Rewards</div><div class="mono">{{ v.rewards_gwei }} gwei</div></div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Consensus</h3>
+            <span class="pill status-{{ snapshot.consensus.status }}"><span class="dot pulse-dot"></span>{{ snapshot.consensus.status }}</span>
+          </div>
+          <div class="kv" id="consensus">
+            <div><div class="muted">Head slot</div><div class="mono">{{ "{:,}".format(snapshot.consensus.head_slot) }}</div></div>
+            <div><div class="muted">Sync distance</div><div class="mono">{{ snapshot.consensus.sync_distance }}</div></div>
+            <div><div class="muted">Finalized epoch</div><div class="mono">{{ "{:,}".format(snapshot.consensus.finalized_epoch) }}</div></div>
+            <div><div class="muted">Justified epoch</div><div class="mono">{{ "{:,}".format(snapshot.consensus.justified_epoch) }}</div></div>
+            <div><div class="muted">Peers</div><div class="mono">{{ snapshot.consensus.connected_peers }}/{{ snapshot.consensus.peer_count }}</div></div>
+            <div><div class="muted">Beacon</div><div class="mono">{{ "reachable" if snapshot.consensus.beacon_reachable else "down" }}</div></div>
+          </div>
+          {% if snapshot.consensus.last_error %}
+          <p class="error">{{ snapshot.consensus.last_error }}</p>
+          {% endif %}
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Infrastructure</h3>
+            <span class="pill status-{{ snapshot.infrastructure.status }}"><span class="dot pulse-dot"></span>{{ snapshot.infrastructure.status }}</span>
+          </div>
+          <div class="meters" id="infra">
+            <div class="meter">
+              <div class="meter-row"><span>CPU</span><span class="mono">{{ snapshot.infrastructure.cpu_usage_percent }}%</span></div>
+              <div class="bar"><div class="fill" style="width: {{ snapshot.infrastructure.cpu_usage_percent }}%"></div></div>
+            </div>
+            <div class="meter">
+              <div class="meter-row"><span>Memory</span><span class="mono">{{ snapshot.infrastructure.memory_usage_percent }}%</span></div>
+              <div class="bar"><div class="fill" style="width: {{ snapshot.infrastructure.memory_usage_percent }}%"></div></div>
+            </div>
+            <div class="meter">
+              <div class="meter-row"><span>Disk</span><span class="mono">{{ snapshot.infrastructure.disk_usage_percent }}%</span></div>
+              <div class="bar"><div class="fill" style="width: {{ snapshot.infrastructure.disk_usage_percent }}%"></div></div>
+            </div>
+          </div>
+          <div class="kv">
+            <div><div class="muted">Disk latency</div><div class="mono">{{ snapshot.infrastructure.disk_latency_ms }} ms</div></div>
+            <div><div class="muted">Clock drift</div><div class="mono">{{ snapshot.infrastructure.clock_drift_ms }} ms</div></div>
+            <div><div class="muted">Network</div><div class="mono">{{ "healthy" if snapshot.infrastructure.network_healthy else "unhealthy" }}</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid-2 animate-rise-delay-3">
+      <div class="panel">
+        <h3>Alerting</h3>
+        <p class="muted">Telegram, Slack, Discord, webhooks, and PagerDuty.</p>
+        <div class="chips">
+          {% for channel in channels %}
+          <span class="chip {% if channel in snapshot.configured_channels %}on{% endif %}">
+            {{ channel }} · {% if channel in snapshot.configured_channels %}on{% else %}off{% endif %}
+          </span>
+          {% endfor %}
+        </div>
+        <div id="alerts" class="alerts">
+          {% if not snapshot.recent_alerts %}
+          <p class="muted">No recent alerts.</p>
+          {% else %}
+            {% for alert in snapshot.recent_alerts[:6] %}
+            <div class="alert">
+              <div class="alert-top">
+                <span class="sev-{{ alert.severity }}">{{ alert.severity }}</span>
+                <span class="mono muted">{{ alert.created_at }}</span>
+              </div>
+              <div class="alert-title">{{ alert.title }}</div>
+              <div class="muted">{{ alert.message }}</div>
+            </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Metrics scrape</h3>
+        <p class="muted">Prometheus-compatible endpoint for the core KPIs.</p>
+        <pre id="metrics-preview"># HELP validator_effectiveness_score ...
+validator_effectiveness_score {{ snapshot.metrics.validator_effectiveness_score }}
+validator_missed_attestations_total {{ snapshot.metrics.validator_missed_attestations_total }}
+validator_slashing_risk_score {{ snapshot.metrics.validator_slashing_risk_score }}</pre>
+        <a href="/api/metrics">Open /api/metrics</a>
+      </div>
+    </section>
+
+    <footer>
+      Non-goal: ValidatorPulse does not scan external security surfaces. It monitors validator
+      duties, consensus health, and host infrastructure.
+    </footer>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
