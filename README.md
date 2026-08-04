@@ -16,6 +16,45 @@ Python / FastAPI service with a live dashboard, Prometheus metrics, and multi-ch
 
 **Non-goal:** does **not** scan external security surfaces.
 
+## Chains & plugins
+
+ValidatorPulse uses a **chain adapter** plugin layout. Shared dashboard, alerts, metrics, and host infrastructure monitoring sit above adapters; each chain owns consensus + operator collection.
+
+| `CHAIN` | Status | Issue |
+| --- | --- | --- |
+| `ethereum` | Implemented | — |
+| `polkadot` | Planned (collators) | [#4](https://github.com/ehsanhajian/ValidatorPulse/issues/4) |
+| `cosmos` | Planned | [#5](https://github.com/ehsanhajian/ValidatorPulse/issues/5) |
+| `solana` | Planned | [#6](https://github.com/ehsanhajian/ValidatorPulse/issues/6) |
+
+Set the active plugin in `.env.local`:
+
+```env
+CHAIN=ethereum
+```
+
+Selecting an unimplemented chain returns a clear configuration error (with a link to the tracking issue).
+
+### Add a chain plugin
+
+1. Create `validator_pulse/chains/<name>/adapter.py` implementing `ChainAdapter`
+2. Register it in `validator_pulse/chains/registry.py` via `register_adapter(...)`
+3. Add chain-specific settings to `Settings` / `.env.example`
+4. Keep infrastructure, alerting, and Prometheus export outside the adapter
+
+```python
+class ChainAdapter(Protocol):
+    name: str
+    display_name: str
+    operator_label: str  # "validator", "collator", ...
+
+    def is_demo(self, settings: Settings) -> bool: ...
+
+    async def collect(
+        self, settings: Settings, infrastructure: InfrastructureHealth
+    ) -> ChainCollection: ...
+```
+
 ## Put your validator here
 
 Edit **`.env.local`** (copy from `.env.example` if needed).
@@ -67,7 +106,8 @@ With `DEMO_MODE=true` (default), the app simulates duty data so you can explore 
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `BEACON_API_URL` | Consensus client HTTP API | unset |
+| `CHAIN` | Active chain plugin | `ethereum` |
+| `BEACON_API_URL` | Ethereum consensus client HTTP API | unset |
 | `VALIDATOR_INDICES` | Comma-separated indices | `1,2,3` (demo) |
 | `VALIDATOR_PUBKEYS` | Comma-separated BLS pubkeys | empty |
 | `DEMO_MODE` | Force demo data | `true` |

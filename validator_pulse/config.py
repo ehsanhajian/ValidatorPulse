@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
+    # Active chain plugin: ethereum (implemented); polkadot/cosmos/solana reserved.
+    chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
     # BLS pubkeys (0x + 96 hex). This is the usual "validator address".
@@ -67,8 +69,11 @@ class Settings(BaseSettings):
         return ["1", "2", "3"]
 
     def is_demo(self) -> bool:
+        """Deprecated helper — prefer adapter.is_demo(settings)."""
         if self.demo_mode:
             return True
+        if self.chain.strip().lower() != "ethereum":
+            return False
         return not bool(self.beacon_api_url and self.beacon_api_url.strip())
 
 
