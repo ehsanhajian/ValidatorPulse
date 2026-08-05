@@ -71,7 +71,23 @@ COLLATOR_ADDRESSES=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
 PARACHAIN_ID=2006
 ```
 
-Built-in parachain token map includes Astar (`ASTR`), Moonbeam (`GLMR`), Acala (`ACA`), Shiden (`SDN`), Moonriver (`MOVR`), and others. Unknown IDs fall back to `PARA<id>` unless you set `REWARD_TOKEN_SYMBOL` / `REWARD_TOKEN_DECIMALS`.
+Built-in `PARACHAIN_ID` → token mapping:
+
+| ID | Network | Token |
+| --- | --- | --- |
+| _(unset)_ | Polkadot (default) | DOT |
+| 1000 | Asset Hub | DOT |
+| 2000 | Acala | ACA |
+| 2004 | Moonbeam | GLMR |
+| 2006 | Astar | ASTR |
+| 2030 | Bifrost | BNC |
+| 2034 | Hydration | HDX |
+| 2035 | Phala | PHA |
+| 2046 | Manta | MANTA |
+| 2007 | Shiden | SDN |
+| 2023 | Moonriver | MOVR |
+
+If your parachain is **not** in that table, set `REWARD_TOKEN_SYMBOL` and `REWARD_TOKEN_DECIMALS`. Otherwise leave them unset.
 
 Demo mode (`DEMO_MODE=true` or unset RPC) simulates collation / block-production duties without a node.
 
