@@ -23,7 +23,9 @@
         <div class="actions">
         <span class="chip">{{ snapshot.chain_display_name }}</span>
         {% if snapshot.parachain_id %}
-        <span class="chip">para {{ snapshot.parachain_id }}</span>
+        <span class="chip">para {{ snapshot.parachain_id }} · {{ snapshot.reward_token_symbol }}</span>
+        {% elif snapshot.chain == 'polkadot' %}
+        <span class="chip">{{ snapshot.reward_token_symbol }}</span>
         {% endif %}
         {% if snapshot.demo_mode %}
         <span class="chip">Demo mode</span>
@@ -85,7 +87,7 @@
               </div>
               <div class="right">
                 <div>{{ v.status }}</div>
-                <div class="mono">{{ format_balance(v.balance_gwei, snapshot.chain) }}</div>
+                <div class="mono">{{ format_balance(v.balance_gwei, snapshot) }}</div>
               </div>
             </div>
             <div class="meters">
@@ -102,7 +104,7 @@
               <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Collations{% else %}Attested{% endif %}</div><div class="mono">{{ v.attestations.successful }}/{{ v.attestations.expected }}</div></div>
               <div><div class="muted">Missed</div><div class="mono">{{ v.attestations.missed }}</div></div>
               <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Blocks{% else %}Proposals{% endif %}</div><div class="mono">{{ v.proposals.successful }}/{{ v.proposals.expected or "—" }}</div></div>
-              <div><div class="muted">Rewards</div><div class="mono">{{ format_rewards(v.rewards_gwei, snapshot.chain) }}</div></div>
+              <div><div class="muted">Rewards</div><div class="mono">{{ format_rewards(v.rewards_gwei, snapshot) }}</div></div>
             </div>
           </article>
           {% endfor %}

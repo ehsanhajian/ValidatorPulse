@@ -59,15 +59,19 @@ Collators use **SS58 addresses** and a Substrate HTTP JSON-RPC endpoint (usually
 | --- | --- | --- |
 | Substrate RPC | `SUBSTRATE_RPC_URL` | `http://127.0.0.1:9933` |
 | Collator SS58 addresses | `COLLATOR_ADDRESSES` | `5Grw…,5FHn…` |
-| Parachain id (optional) | `PARACHAIN_ID` | `2000` |
+| Parachain id (optional) | `PARACHAIN_ID` | `2006` (Astar → ASTR) |
+| Token symbol override | `REWARD_TOKEN_SYMBOL` | `ASTR` |
+| Token decimals override | `REWARD_TOKEN_DECIMALS` | `18` |
 
 ```env
 CHAIN=polkadot
 DEMO_MODE=false
 SUBSTRATE_RPC_URL=http://127.0.0.1:9933
 COLLATOR_ADDRESSES=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
-PARACHAIN_ID=2000
+PARACHAIN_ID=2006
 ```
+
+Built-in parachain token map includes Astar (`ASTR`), Moonbeam (`GLMR`), Acala (`ACA`), Shiden (`SDN`), Moonriver (`MOVR`), and others. Unknown IDs fall back to `PARA<id>` unless you set `REWARD_TOKEN_SYMBOL` / `REWARD_TOKEN_DECIMALS`.
 
 Demo mode (`DEMO_MODE=true` or unset RPC) simulates collation / block-production duties without a node.
 
@@ -132,7 +136,9 @@ With `DEMO_MODE=true` (default), the app simulates duty data so you can explore 
 | `VALIDATOR_PUBKEYS` | Comma-separated BLS pubkeys | empty |
 | `SUBSTRATE_RPC_URL` | Polkadot/parachain Substrate HTTP RPC | unset |
 | `COLLATOR_ADDRESSES` | Comma-separated SS58 collator addresses | empty |
-| `PARACHAIN_ID` | Optional parachain id label | unset |
+| `PARACHAIN_ID` | Parachain id (token lookup + labeling) | unset (DOT) |
+| `REWARD_TOKEN_SYMBOL` | Override native token symbol | unset |
+| `REWARD_TOKEN_DECIMALS` | Override token decimals | unset |
 | `DEMO_MODE` | Force demo data | `true` |
 | `POLL_INTERVAL_SECONDS` | Cache / refresh window | `12` |
 | `HOST` / `PORT` | Bind address | `127.0.0.1` / `3000` |

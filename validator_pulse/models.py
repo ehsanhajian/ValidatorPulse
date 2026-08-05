@@ -115,6 +115,9 @@ class PulseSnapshot(BaseModel):
     chain_display_name: str = "Ethereum"
     operator_label: str = "validator"
     parachain_id: int | None = None
+    reward_token_symbol: str = "ETH"
+    reward_token_decimals: int = 9
+    reward_token_base_unit: str = "gwei"
     verdict: Verdict
     validators: list[ValidatorStats]
     consensus: ConsensusHealth

@@ -9,6 +9,7 @@ from validator_pulse.alerts import (
     evaluate_alerts,
 )
 from validator_pulse.chains import UnsupportedChainError, get_adapter
+from validator_pulse.chains.polkadot.tokens import resolve_reward_token
 from validator_pulse.collectors.infrastructure import collect_infrastructure
 from validator_pulse.config import Settings, get_settings
 from validator_pulse.models import PulseSnapshot
@@ -36,6 +37,12 @@ async def collect_pulse(
     demo_mode = adapter.is_demo(settings)
 
     metrics = aggregate_fleet_metrics(validators)
+    token = resolve_reward_token(
+        chain=adapter.name,
+        parachain_id=settings.parachain_id,
+        symbol_override=settings.reward_token_symbol,
+        decimals_override=settings.reward_token_decimals,
+    )
     partial = PulseSnapshot(
         collected_at=collected_at,
         demo_mode=demo_mode,
@@ -43,6 +50,9 @@ async def collect_pulse(
         chain_display_name=adapter.display_name,
         operator_label=adapter.operator_label,
         parachain_id=settings.parachain_id,
+        reward_token_symbol=token.symbol,
+        reward_token_decimals=token.decimals,
+        reward_token_base_unit=token.base_unit,
         verdict=build_verdict(
             {
                 "consensus": consensus,
