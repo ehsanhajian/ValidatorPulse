@@ -83,7 +83,12 @@
             <div class="validator-top">
               <div>
                 <div class="mono">#{{ v.index }}</div>
-                <div class="pubkey">{{ v.pubkey or "—" }}</div>
+                {% if v.display_name %}
+                <div class="display-name" title="{{ v.pubkey or '' }}">{{ v.display_name }}</div>
+                <div class="pubkey muted" title="{{ v.pubkey or '' }}">{{ v.pubkey or "—" }}</div>
+                {% else %}
+                <div class="pubkey" title="{{ v.pubkey or '' }}">{{ v.pubkey or "—" }}</div>
+                {% endif %}
               </div>
               <div class="right">
                 <div>{{ v.status }}</div>
