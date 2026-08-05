@@ -35,7 +35,24 @@ def _status_color(status: str) -> str:
     }.get(status, "var(--ink-muted)")
 
 
+def _format_balance(amount: int, chain: str) -> str:
+    """Shared model stores eth amounts in gwei; polkadot amounts in plancks."""
+    if chain == "polkadot":
+        return f"{amount / 1e10:.4f} DOT"
+    return f"{amount / 1e9:.3f} ETH"
+
+
+def _format_rewards(amount: int, chain: str) -> str:
+    if chain == "polkadot":
+        if amount >= 1e10:
+            return f"{amount / 1e10:.4f} DOT"
+        return f"{amount:,} planck"
+    return f"{amount:,} gwei"
+
+
 TEMPLATES.env.globals["status_color"] = _status_color
+TEMPLATES.env.globals["format_balance"] = _format_balance
+TEMPLATES.env.globals["format_rewards"] = _format_rewards
 TEMPLATES.env.globals["now"] = lambda: datetime.now(timezone.utc)
 
 

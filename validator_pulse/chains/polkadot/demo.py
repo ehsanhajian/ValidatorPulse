@@ -139,12 +139,13 @@ def build_demo_collators(
         if parachain_id is not None:
             status = f"active_collator_para_{parachain_id}"
 
+        # Demo balances/rewards stored as plancks (1 DOT = 1e10 planck).
         operators.append(
             ValidatorStats(
                 index=i,
                 pubkey=address,
                 status=status,
-                balance_gwei=100_000_000_000 + rewards,
+                balance_gwei=100_000_000_000 + rewards,  # ~10 DOT + reward plancks
                 effective_balance_gwei=100_000_000_000,
                 attestations=AttestationStats(
                     expected=expected_rounds,
