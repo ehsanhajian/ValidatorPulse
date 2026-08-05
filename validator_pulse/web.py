@@ -35,19 +35,19 @@ def _status_color(status: str) -> str:
     }.get(status, "var(--ink-muted)")
 
 
-def _format_balance(amount: int, chain: str) -> str:
-    """Shared model stores eth amounts in gwei; polkadot amounts in plancks."""
-    if chain == "polkadot":
-        return f"{amount / 1e10:.4f} DOT"
-    return f"{amount / 1e9:.3f} ETH"
+def _format_balance(amount: int, snapshot) -> str:
+    from validator_pulse.chains.polkadot.tokens import TokenInfo, format_token_amount
+
+    token = TokenInfo(
+        symbol=getattr(snapshot, "reward_token_symbol", "TOKEN"),
+        decimals=int(getattr(snapshot, "reward_token_decimals", 0) or 0),
+        base_unit=getattr(snapshot, "reward_token_base_unit", "unit"),
+    )
+    return format_token_amount(amount, token)
 
 
-def _format_rewards(amount: int, chain: str) -> str:
-    if chain == "polkadot":
-        if amount >= 1e10:
-            return f"{amount / 1e10:.4f} DOT"
-        return f"{amount:,} planck"
-    return f"{amount:,} gwei"
+def _format_rewards(amount: int, snapshot) -> str:
+    return _format_balance(amount, snapshot)
 
 
 TEMPLATES.env.globals["status_color"] = _status_color

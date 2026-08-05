@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     substrate_rpc_url: str | None = None
     collator_addresses: str = ""
     parachain_id: int | None = None
+    # Optional overrides when parachain token isn't in the built-in map
+    reward_token_symbol: str | None = None
+    reward_token_decimals: int | None = None
     poll_interval_seconds: int = 12
     demo_mode: bool = True
 
@@ -50,9 +53,18 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 3000
 
-    @field_validator("parachain_id", mode="before")
+    @field_validator("parachain_id", "reward_token_decimals", mode="before")
     @classmethod
-    def _empty_parachain_id(cls, value: Any) -> Any:
+    def _empty_optional_int(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value
+
+    @field_validator("reward_token_symbol", mode="before")
+    @classmethod
+    def _empty_optional_str(cls, value: Any) -> Any:
         if value is None:
             return None
         if isinstance(value, str) and value.strip() == "":
