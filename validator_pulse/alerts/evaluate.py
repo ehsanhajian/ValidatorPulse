@@ -33,11 +33,16 @@ def build_verdict(snapshot: PulseSnapshot | dict) -> Verdict:
         infra_status = snapshot.infrastructure.status
         validators = snapshot.validators
         metrics = snapshot.metrics
+        operator = snapshot.operator_label or "validator"
     else:
         consensus_status = snapshot["consensus"].status
         infra_status = snapshot["infrastructure"].status
         validators = snapshot["validators"]
         metrics = snapshot["metrics"]
+        operator = snapshot.get("operator_label") or "validator"
+
+    duty_word = "collations" if operator == "collator" else "attestations"
+    risk_word = "downtime risk" if operator == "collator" else "slashing risk"
 
     statuses: list[HealthStatus] = [consensus_status, infra_status]
     for v in validators:
@@ -64,9 +69,9 @@ def build_verdict(snapshot: PulseSnapshot | dict) -> Verdict:
     if status == "healthy":
         return Verdict(
             status=status,
-            answer="Yes — your validator is operating correctly.",
+            answer=f"Yes — your {operator} is operating correctly.",
             summary=(
-                f"Fleet effectiveness {effectiveness}% with slashing risk {risk}. "
+                f"Fleet effectiveness {effectiveness}% with {risk_word} {risk}. "
                 "Consensus and infrastructure look healthy."
             ),
         )
@@ -75,8 +80,8 @@ def build_verdict(snapshot: PulseSnapshot | dict) -> Verdict:
             status=status,
             answer="Partially — attention needed.",
             summary=(
-                f"Effectiveness {effectiveness}%, missed attestations {missed}, "
-                f"slashing risk {risk}. Review degraded signals before they escalate."
+                f"Effectiveness {effectiveness}%, missed {duty_word} {missed}, "
+                f"{risk_word} {risk}. Review degraded signals before they escalate."
             ),
         )
     return Verdict(
@@ -84,8 +89,8 @@ def build_verdict(snapshot: PulseSnapshot | dict) -> Verdict:
         answer="No — intervention required.",
         summary=(
             f"Critical signals detected. Effectiveness {effectiveness}%, "
-            f"missed attestations {missed}, slashing risk {risk}. "
-            "Act now to avoid downtime or slashing."
+            f"missed {duty_word} {missed}, {risk_word} {risk}. "
+            "Act now to avoid downtime or penalties."
         ),
     )
 
@@ -94,16 +99,21 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
     channels = configured_channels(settings)
     now = datetime.now(timezone.utc).isoformat()
     alerts: list[AlertEvent] = []
+    operator = snapshot.operator_label or "validator"
+    duty_word = "collations" if operator == "collator" else "attestations"
+    risk_word = "downtime risk" if operator == "collator" else "slashing risk"
+    node_label = "Substrate node" if snapshot.chain == "polkadot" else "Beacon node"
 
     for v in snapshot.validators:
+        label = v.pubkey or str(v.index)
         if v.attestations.missed >= settings.alert_missed_attestations:
             alerts.append(
                 AlertEvent(
-                    id=f"missed-att-{v.index}-{now}",
+                    id=f"missed-duty-{v.index}-{now}",
                     severity="warning",
-                    title=f"Missed attestations on validator {v.index}",
+                    title=f"Missed {duty_word} on {operator} {label}",
                     message=(
-                        f"{v.attestations.missed} missed attestations in the current "
+                        f"{v.attestations.missed} missed {duty_word} in the current "
                         f"window (threshold {settings.alert_missed_attestations})."
                     ),
                     source="validator",
@@ -116,7 +126,7 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                 AlertEvent(
                     id=f"eff-{v.index}-{now}",
                     severity="warning",
-                    title=f"Low effectiveness on validator {v.index}",
+                    title=f"Low effectiveness on {operator} {label}",
                     message=(
                         f"Effectiveness {v.effectiveness_score}% is below "
                         f"{settings.alert_effectiveness_below}%."
@@ -129,11 +139,11 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
         if v.slashing_risk_score >= settings.alert_slashing_risk_above:
             alerts.append(
                 AlertEvent(
-                    id=f"slash-{v.index}-{now}",
+                    id=f"risk-{v.index}-{now}",
                     severity="critical",
-                    title=f"Elevated slashing risk on validator {v.index}",
+                    title=f"Elevated {risk_word} on {operator} {label}",
                     message=(
-                        f"Slashing risk score {v.slashing_risk_score} exceeds "
+                        f"Risk score {v.slashing_risk_score} exceeds "
                         f"threshold {settings.alert_slashing_risk_above}."
                     ),
                     source="validator",
@@ -145,10 +155,10 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
     if not snapshot.consensus.beacon_reachable:
         alerts.append(
             AlertEvent(
-                id=f"beacon-down-{now}",
+                id=f"node-down-{now}",
                 severity="critical",
-                title="Beacon node unreachable",
-                message=snapshot.consensus.last_error or "Beacon health check failed.",
+                title=f"{node_label} unreachable",
+                message=snapshot.consensus.last_error or f"{node_label} health check failed.",
                 source="consensus",
                 created_at=now,
                 channels=channels,
@@ -157,10 +167,10 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
     elif snapshot.consensus.syncing:
         alerts.append(
             AlertEvent(
-                id=f"beacon-sync-{now}",
+                id=f"node-sync-{now}",
                 severity="warning",
-                title="Beacon node syncing",
-                message=f"Sync distance {snapshot.consensus.sync_distance} slots.",
+                title=f"{node_label} syncing",
+                message=f"Sync distance {snapshot.consensus.sync_distance}.",
                 source="consensus",
                 created_at=now,
                 channels=channels,

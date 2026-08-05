@@ -114,6 +114,7 @@ class PulseSnapshot(BaseModel):
     chain: str = "ethereum"
     chain_display_name: str = "Ethereum"
     operator_label: str = "validator"
+    parachain_id: int | None = None
     verdict: Verdict
     validators: list[ValidatorStats]
     consensus: ConsensusHealth

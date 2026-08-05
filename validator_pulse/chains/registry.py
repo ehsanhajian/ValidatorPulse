@@ -8,10 +8,6 @@ AdapterFactory = Callable[[], ChainAdapter]
 
 _REGISTRY: dict[str, AdapterFactory] = {}
 _KNOWN_UNIMPLEMENTED: dict[str, str] = {
-    "polkadot": (
-        "Polkadot / parachain collator monitoring is not implemented yet. "
-        "See https://github.com/ehsanhajian/ValidatorPulse/issues/4"
-    ),
     "cosmos": (
         "Cosmos SDK validator monitoring is not implemented yet. "
         "See https://github.com/ehsanhajian/ValidatorPulse/issues/5"
@@ -57,8 +53,10 @@ def get_adapter(chain: str) -> ChainAdapter:
 def _load_builtin_adapters() -> None:
     # Local imports avoid circular deps at module import time.
     from validator_pulse.chains.ethereum.adapter import EthereumAdapter
+    from validator_pulse.chains.polkadot.adapter import PolkadotAdapter
 
     register_adapter("ethereum", EthereumAdapter)
+    register_adapter("polkadot", PolkadotAdapter)
 
 
 _load_builtin_adapters()

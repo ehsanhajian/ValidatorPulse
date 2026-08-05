@@ -20,8 +20,11 @@
           is my validator operating correctly?
         </p>
       </div>
-      <div class="actions">
+        <div class="actions">
         <span class="chip">{{ snapshot.chain_display_name }}</span>
+        {% if snapshot.parachain_id %}
+        <span class="chip">para {{ snapshot.parachain_id }}</span>
+        {% endif %}
         {% if snapshot.demo_mode %}
         <span class="chip">Demo mode</span>
         {% endif %}
@@ -96,9 +99,9 @@
               </div>
             </div>
             <div class="stats">
-              <div><div class="muted">Attested</div><div class="mono">{{ v.attestations.successful }}/{{ v.attestations.expected }}</div></div>
+              <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Collations{% else %}Attested{% endif %}</div><div class="mono">{{ v.attestations.successful }}/{{ v.attestations.expected }}</div></div>
               <div><div class="muted">Missed</div><div class="mono">{{ v.attestations.missed }}</div></div>
-              <div><div class="muted">Proposals</div><div class="mono">{{ v.proposals.successful }}/{{ v.proposals.expected or "—" }}</div></div>
+              <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Blocks{% else %}Proposals{% endif %}</div><div class="mono">{{ v.proposals.successful }}/{{ v.proposals.expected or "—" }}</div></div>
               <div><div class="muted">Rewards</div><div class="mono">{{ v.rewards_gwei }} gwei</div></div>
             </div>
           </article>

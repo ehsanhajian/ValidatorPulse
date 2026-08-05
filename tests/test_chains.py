@@ -17,9 +17,14 @@ def test_ethereum_adapter_is_registered() -> None:
     assert "ethereum" in list_implemented_chains()
 
 
+def test_polkadot_adapter_is_registered() -> None:
+    adapter = get_adapter("polkadot")
+    assert adapter.name == "polkadot"
+    assert adapter.operator_label == "collator"
+    assert "polkadot" in list_implemented_chains()
+
+
 def test_unimplemented_chain_has_clear_error() -> None:
-    with pytest.raises(UnsupportedChainError, match="issues/4"):
-        get_adapter("polkadot")
     with pytest.raises(UnsupportedChainError, match="issues/5"):
         get_adapter("cosmos")
     with pytest.raises(UnsupportedChainError, match="issues/6"):
