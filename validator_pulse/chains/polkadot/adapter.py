@@ -7,6 +7,7 @@ from validator_pulse.chains.polkadot.demo import (
     build_demo_collators,
 )
 from validator_pulse.chains.polkadot.rpc import collect_substrate_consensus
+from validator_pulse.chains.polkadot.tokens import resolve_reward_token
 from validator_pulse.config import Settings
 from validator_pulse.models import (
     AttestationStats,
@@ -53,11 +54,18 @@ class PolkadotAdapter:
         consensus = build_demo_collator_consensus()
         infrastructure = apply_demo_infrastructure(infrastructure)
         addresses = settings.collator_address_list() or list(_DEFAULT_DEMO_COLLATORS)
+        token = resolve_reward_token(
+            chain=self.name,
+            parachain_id=settings.parachain_id,
+            symbol_override=settings.reward_token_symbol,
+            decimals_override=settings.reward_token_decimals,
+        )
         operators = build_demo_collators(
             addresses,
             consensus,
             infrastructure,
             parachain_id=settings.parachain_id,
+            token_decimals=token.decimals,
         )
         return ChainCollection(
             consensus=consensus,

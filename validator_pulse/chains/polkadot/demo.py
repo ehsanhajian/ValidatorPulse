@@ -52,12 +52,14 @@ def build_demo_collators(
     infrastructure: InfrastructureHealth,
     *,
     parachain_id: int | None = None,
+    token_decimals: int = 10,
     now: float | None = None,
 ) -> list[ValidatorStats]:
     """Demo collators — collation rounds map to attestations, authored blocks to proposals."""
     now_s = now or time.time()
     head = consensus.head_slot
     operators: list[ValidatorStats] = []
+    unit = 10 ** max(token_decimals, 0)
 
     for i, address in enumerate(addresses):
         seed = sum(ord(c) for c in address) + i
@@ -74,13 +76,13 @@ def build_demo_collators(
             if outcome == "success":
                 successful += 1
                 consecutive_missed = 0
-                reward = 12_000 + int(roll * 3_000)
+                reward = int(unit * (0.00012 + roll * 0.00003))
                 rewards += reward
                 delay = 1
             elif outcome == "late":
                 late += 1
                 consecutive_missed = 0
-                reward = 6_000
+                reward = int(unit * 0.00006)
                 rewards += reward
                 delay = 2
             else:
@@ -106,7 +108,7 @@ def build_demo_collators(
         )
         blocks_missed = expected_blocks - blocks_successful
         if blocks_successful:
-            rewards += blocks_successful * 1_500_000
+            rewards += blocks_successful * int(unit * 0.015)
 
         recent_proposals = [
             ProposalDuty(
@@ -114,7 +116,7 @@ def build_demo_collators(
                 slot=max(0, head - j),
                 validator_index=i,
                 outcome="success" if j < blocks_successful else "missed",
-                reward_gwei=1_500_000 if j < blocks_successful else 0,
+                reward_gwei=int(unit * 0.015) if j < blocks_successful else 0,
             )
             for j in range(expected_blocks)
         ]
@@ -139,14 +141,15 @@ def build_demo_collators(
         if parachain_id is not None:
             status = f"active_collator_para_{parachain_id}"
 
-        # Demo balances/rewards stored as plancks (1 DOT = 1e10 planck).
+        # Demo balances/rewards stored in the token's base units (planck/wei).
+        base_balance = 10 * unit
         operators.append(
             ValidatorStats(
                 index=i,
                 pubkey=address,
                 status=status,
-                balance_gwei=100_000_000_000 + rewards,  # ~10 DOT + reward plancks
-                effective_balance_gwei=100_000_000_000,
+                balance_gwei=base_balance + rewards,
+                effective_balance_gwei=base_balance,
                 attestations=AttestationStats(
                     expected=expected_rounds,
                     successful=successful,
