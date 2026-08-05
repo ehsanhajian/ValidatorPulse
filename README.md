@@ -35,6 +35,8 @@ CHAIN=ethereum
 
 ### Ethereum validators
 
+![Ethereum dashboard (demo mode)](docs/images/dashboard-ethereum.png)
+
 Edit **`.env.local`** (copy from `.env.example` if needed).
 
 Ethereum validators are identified by **index** and/or **BLS pubkey** — not by an execution wallet address (`0x` + 40 hex).
@@ -52,6 +54,8 @@ VALIDATOR_INDICES=123456,789012
 ```
 
 ### Polkadot / parachain collators
+
+![Polkadot collator dashboard (demo mode, Astar / ASTR)](docs/images/dashboard-polkadot.png)
 
 Collators use **SS58 addresses** and a Substrate HTTP JSON-RPC endpoint (usually your collator node).
 
@@ -218,4 +222,12 @@ Also exports per-validator labels plus consensus/infra gauges.
 
 ```bash
 pytest
+```
+
+## Support the project
+
+If ValidatorPulse helps you, donations are welcome — ETH or ERC-20 on Ethereum:
+
+```text
+0xE5B2f8a35c0f12304c5aBDa9477159b53f622cAA
 ```
