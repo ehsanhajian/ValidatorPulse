@@ -44,6 +44,7 @@ class ProposalStats(BaseModel):
 class ValidatorStats(BaseModel):
     index: int
     pubkey: str | None = None
+    display_name: str | None = None
     status: str
     balance_gwei: int
     effective_balance_gwei: int

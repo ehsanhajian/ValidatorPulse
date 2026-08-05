@@ -12,6 +12,7 @@ from validator_pulse.chains import UnsupportedChainError, get_adapter
 from validator_pulse.chains.polkadot.tokens import resolve_reward_token
 from validator_pulse.collectors.infrastructure import collect_infrastructure
 from validator_pulse.config import Settings, get_settings
+from validator_pulse.identity import enrich_operator_names
 from validator_pulse.models import PulseSnapshot
 from validator_pulse.scoring import aggregate_fleet_metrics
 from validator_pulse.store import get_alert_history, get_snapshot, set_snapshot
@@ -35,6 +36,15 @@ async def collect_pulse(
     validators = collection.operators
     infrastructure = collection.infrastructure
     demo_mode = adapter.is_demo(settings)
+
+    await enrich_operator_names(
+        validators,
+        chain=adapter.name,
+        parachain_id=settings.parachain_id,
+        enabled=settings.fetch_operator_names,
+        subscan_api_key=settings.subscan_api_key,
+        beaconcha_base_url=settings.beaconcha_base_url,
+    )
 
     metrics = aggregate_fleet_metrics(validators)
     token = resolve_reward_token(

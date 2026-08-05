@@ -139,6 +139,9 @@ With `DEMO_MODE=true` (default), the app simulates duty data so you can explore 
 | `PARACHAIN_ID` | Parachain id (token lookup + labeling) | unset (DOT) |
 | `REWARD_TOKEN_SYMBOL` | Override native token symbol | unset |
 | `REWARD_TOKEN_DECIMALS` | Override token decimals | unset |
+| `FETCH_OPERATOR_NAMES` | Resolve display names via Subscan / beaconcha.in | `true` |
+| `SUBSCAN_API_KEY` | Optional Subscan API key | unset |
+| `BEACONCHA_BASE_URL` | Ethereum explorer API base | `https://beaconcha.in` |
 | `DEMO_MODE` | Force demo data | `true` |
 | `POLL_INTERVAL_SECONDS` | Cache / refresh window | `12` |
 | `HOST` / `PORT` | Bind address | `127.0.0.1` / `3000` |
