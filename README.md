@@ -53,6 +53,8 @@ BEACON_API_URL=http://127.0.0.1:5052
 VALIDATOR_INDICES=123456,789012
 ```
 
+Live mode pulls attestation / proposal duties from the Beacon API (attester & proposer duties, attestation rewards, block presence) and **persists** them across poll cycles so missed/success counts and recent-duty lists update over epochs. Demo mode still simulates a full duty window without a beacon node.
+
 ### Polkadot / parachain collators
 
 ![Polkadot collator dashboard (demo mode, Astar / ASTR)](docs/images/dashboard-polkadot.png)

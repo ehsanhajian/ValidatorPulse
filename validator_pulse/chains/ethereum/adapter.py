@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 from validator_pulse.chains.base import ChainCollection
+from validator_pulse.chains.ethereum.duty_tracker import (
+    effectiveness_inputs,
+    get_duty_store,
+    refresh_live_duties,
+)
 from validator_pulse.collectors.beacon import (
     collect_consensus,
     collect_validator_balances,
@@ -94,45 +99,73 @@ class EthereumAdapter:
         infrastructure: InfrastructureHealth,
     ) -> list[ValidatorStats]:
         balances = await collect_validator_balances(beacon_api_url, validator_ids)
+        indices = [int(b["index"]) for b in balances]
+        if indices and consensus.head_slot > 0:
+            await refresh_live_duties(
+                beacon_api_url,
+                indices,
+                head_slot=consensus.head_slot,
+                store=get_duty_store(),
+            )
+
+        store = get_duty_store()
         validators: list[ValidatorStats] = []
         for b in balances:
-            active = "active" in (b["status"] or "")
-            attestations = AttestationStats(
-                expected=32,
-                successful=31 if active else 20,
-                missed=1 if active else 8,
-                late=0,
-            )
-            proposals = ProposalStats(expected=0, successful=0, missed=0)
+            index = int(b["index"])
+            view = store.view_for(index)
+            (
+                att_expected,
+                att_ok,
+                att_late,
+                prop_expected,
+                prop_ok,
+            ) = effectiveness_inputs(view)
+
+            # Until the first duties resolve, show empty stats rather than
+            # inventing success from validator status alone.
+            if view.attestations.expected == 0 and view.proposals.expected == 0:
+                attestations = AttestationStats(
+                    expected=0, successful=0, missed=0, late=0
+                )
+                proposals = ProposalStats(expected=0, successful=0, missed=0)
+            else:
+                attestations = view.attestations
+                proposals = view.proposals
+
             effectiveness = compute_effectiveness_score(
-                attestations_expected=attestations.expected,
-                attestations_successful=attestations.successful,
-                attestations_late=attestations.late,
-                proposals_expected=proposals.expected,
-                proposals_successful=proposals.successful,
+                attestations_expected=att_expected,
+                attestations_successful=att_ok,
+                attestations_late=att_late,
+                proposals_expected=prop_expected,
+                proposals_successful=prop_ok,
             )
             slashing_risk = compute_slashing_risk_score(
-                consecutive_missed_attestations=attestations.missed,
+                consecutive_missed_attestations=view.consecutive_missed_attestations,
                 missed_proposals=proposals.missed,
                 clock_drift_ms=infrastructure.clock_drift_ms,
                 syncing=consensus.syncing,
                 peer_count=consensus.connected_peers,
                 effectiveness_score=effectiveness,
             )
+            # Prefer duty-window rewards when available; fall back to balance delta (#18).
+            rewards = view.duty_rewards_gwei
+            if rewards <= 0:
+                rewards = max(0, b["balance_gwei"] - b["effective_balance_gwei"])
+
             validators.append(
                 ValidatorStats(
-                    index=b["index"],
+                    index=index,
                     pubkey=b.get("pubkey"),
                     status=b["status"],
                     balance_gwei=b["balance_gwei"],
                     effective_balance_gwei=b["effective_balance_gwei"],
                     attestations=attestations,
                     proposals=proposals,
-                    rewards_gwei=max(
-                        0, b["balance_gwei"] - b["effective_balance_gwei"]
-                    ),
+                    rewards_gwei=rewards,
                     effectiveness_score=effectiveness,
                     slashing_risk_score=slashing_risk,
+                    recent_attestations=view.recent_attestations,
+                    recent_proposals=view.recent_proposals,
                 )
             )
         return validators
