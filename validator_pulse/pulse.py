@@ -42,12 +42,14 @@ async def collect_pulse(
         chain=adapter.name,
         chain_display_name=adapter.display_name,
         operator_label=adapter.operator_label,
+        parachain_id=settings.parachain_id,
         verdict=build_verdict(
             {
                 "consensus": consensus,
                 "infrastructure": infrastructure,
                 "validators": validators,
                 "metrics": metrics,
+                "operator_label": adapter.operator_label,
             }
         ),
         validators=validators,

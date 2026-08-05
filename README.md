@@ -23,7 +23,7 @@ ValidatorPulse uses a **chain adapter** plugin layout. Shared dashboard, alerts,
 | `CHAIN` | Status | Issue |
 | --- | --- | --- |
 | `ethereum` | Implemented | — |
-| `polkadot` | Planned (collators) | [#4](https://github.com/ehsanhajian/ValidatorPulse/issues/4) |
+| `polkadot` | Implemented (collators) | [#4](https://github.com/ehsanhajian/ValidatorPulse/issues/4) |
 | `cosmos` | Planned | [#5](https://github.com/ehsanhajian/ValidatorPulse/issues/5) |
 | `solana` | Planned | [#6](https://github.com/ehsanhajian/ValidatorPulse/issues/6) |
 
@@ -32,6 +32,44 @@ Set the active plugin in `.env.local`:
 ```env
 CHAIN=ethereum
 ```
+
+### Ethereum validators
+
+Edit **`.env.local`** (copy from `.env.example` if needed).
+
+Ethereum validators are identified by **index** and/or **BLS pubkey** — not by an execution wallet address (`0x` + 40 hex).
+
+| What you have | Env var | Example |
+| --- | --- | --- |
+| Validator index | `VALIDATOR_INDICES` | `123456,789012` |
+| Validator pubkey (“validator address”) | `VALIDATOR_PUBKEYS` | `0xabc…` (96 hex chars after `0x`) |
+
+```env
+CHAIN=ethereum
+DEMO_MODE=false
+BEACON_API_URL=http://127.0.0.1:5052
+VALIDATOR_INDICES=123456,789012
+```
+
+### Polkadot / parachain collators
+
+Collators use **SS58 addresses** and a Substrate HTTP JSON-RPC endpoint (usually your collator node).
+
+| What you have | Env var | Example |
+| --- | --- | --- |
+| Substrate RPC | `SUBSTRATE_RPC_URL` | `http://127.0.0.1:9933` |
+| Collator SS58 addresses | `COLLATOR_ADDRESSES` | `5Grw…,5FHn…` |
+| Parachain id (optional) | `PARACHAIN_ID` | `2000` |
+
+```env
+CHAIN=polkadot
+DEMO_MODE=false
+SUBSTRATE_RPC_URL=http://127.0.0.1:9933
+COLLATOR_ADDRESSES=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+PARACHAIN_ID=2000
+```
+
+Demo mode (`DEMO_MODE=true` or unset RPC) simulates collation / block-production duties without a node.
 
 Selecting an unimplemented chain returns a clear configuration error (with a link to the tracking issue).
 
@@ -55,37 +93,19 @@ class ChainAdapter(Protocol):
     ) -> ChainCollection: ...
 ```
 
-## Put your validator here
-
-Edit **`.env.local`** (copy from `.env.example` if needed).
-
-Ethereum validators are identified by **index** and/or **BLS pubkey** — not by an execution wallet address (`0x` + 40 hex).
-
-| What you have | Env var | Example |
-| --- | --- | --- |
-| Validator index | `VALIDATOR_INDICES` | `123456,789012` |
-| Validator pubkey (“validator address”) | `VALIDATOR_PUBKEYS` | `0xabc…` (96 hex chars after `0x`) |
-
-You can set either, or both. Multiple validators = comma-separated list.
-
-```env
-# Live monitoring
-DEMO_MODE=false
-BEACON_API_URL=http://127.0.0.1:5052
-
-# Option A — indices
-VALIDATOR_INDICES=123456,789012
-
-# Option B — pubkeys (usual "validator address")
-VALIDATOR_PUBKEYS=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-```
-
-Where to find these:
-
-- **Index / pubkey:** [beaconcha.in](https://beaconcha.in), your validator client logs, or deposit-data JSON
-- **Beacon API URL:** your consensus client HTTP API (Lighthouse/Teku/Nimbus/Prysm), often `http://127.0.0.1:5052`
+## Configuration tips
 
 Restart the app after changing `.env.local` (or rely on reload if already running with `python -m validator_pulse`).
+
+Where to find Ethereum identifiers:
+
+- **Index / pubkey:** [beaconcha.in](https://beaconcha.in), your validator client logs, or deposit-data JSON
+- **Beacon API URL:** consensus client HTTP API (Lighthouse/Teku/Nimbus/Prysm), often `http://127.0.0.1:5052`
+
+Where to find Polkadot collator identifiers:
+
+- **SS58 address:** collator account / session keys page on a parachain explorer
+- **Substrate RPC:** collator node HTTP RPC, often `http://127.0.0.1:9933`
 
 ## Quick start
 
@@ -106,10 +126,13 @@ With `DEMO_MODE=true` (default), the app simulates duty data so you can explore 
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active chain plugin | `ethereum` |
+| `CHAIN` | Active chain plugin (`ethereum`, `polkadot`, …) | `ethereum` |
 | `BEACON_API_URL` | Ethereum consensus client HTTP API | unset |
 | `VALIDATOR_INDICES` | Comma-separated indices | `1,2,3` (demo) |
 | `VALIDATOR_PUBKEYS` | Comma-separated BLS pubkeys | empty |
+| `SUBSTRATE_RPC_URL` | Polkadot/parachain Substrate HTTP RPC | unset |
+| `COLLATOR_ADDRESSES` | Comma-separated SS58 collator addresses | empty |
+| `PARACHAIN_ID` | Optional parachain id label | unset |
 | `DEMO_MODE` | Force demo data | `true` |
 | `POLL_INTERVAL_SECONDS` | Cache / refresh window | `12` |
 | `HOST` / `PORT` | Bind address | `127.0.0.1` / `3000` |
