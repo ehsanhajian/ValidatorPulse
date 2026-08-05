@@ -357,6 +357,71 @@ button:disabled { opacity: 0.6; cursor: wait; }
   .stats { grid-template-columns: repeat(4, 1fr); }
 }
 
+.duty-history {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.duty-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.duty-label {
+  font-size: 0.7rem;
+  min-width: 8.5rem;
+}
+
+.duty-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.duty-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 0.3rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: help;
+  border: 1px solid transparent;
+}
+
+.duty-chip.outcome-success {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: color-mix(in srgb, var(--ok) 25%, transparent);
+}
+
+.duty-chip.outcome-missed {
+  color: var(--crit);
+  background: var(--crit-soft);
+  border-color: color-mix(in srgb, var(--crit) 25%, transparent);
+}
+
+.duty-chip.outcome-late {
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 30%, transparent);
+}
+
+.duty-chip.outcome-pending {
+  color: var(--ink-muted);
+  background: color-mix(in srgb, var(--line) 35%, transparent);
+  border-color: var(--line);
+}
+
 .muted { color: var(--ink-muted); }
 .mono { font-family: "IBM Plex Mono", monospace; }
 .error { color: var(--crit); }

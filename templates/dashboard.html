@@ -111,6 +111,30 @@
               <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Blocks{% else %}Proposals{% endif %}</div><div class="mono">{{ v.proposals.successful }}/{{ v.proposals.expected or "—" }}</div></div>
               <div><div class="muted">Rewards</div><div class="mono">{{ format_rewards(v.rewards_gwei, snapshot) }}</div></div>
             </div>
+            {% if v.recent_attestations or v.recent_proposals %}
+            <div class="duty-history">
+              {% if v.recent_attestations %}
+              <div class="duty-row">
+                <span class="muted duty-label">{% if snapshot.operator_label == 'collator' %}Recent collations{% else %}Recent attestations{% endif %}</span>
+                <div class="duty-chips">
+                  {% for d in v.recent_attestations %}
+                  <span class="duty-chip outcome-{{ d.outcome }}" title="epoch {{ d.epoch }} · slot {{ d.slot }} · {{ d.outcome }}{% if d.inclusion_delay %} · delay {{ d.inclusion_delay }}{% endif %}">{{ d.outcome[0]|upper }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+              {% if v.recent_proposals %}
+              <div class="duty-row">
+                <span class="muted duty-label">{% if snapshot.operator_label == 'collator' %}Recent blocks{% else %}Recent proposals{% endif %}</span>
+                <div class="duty-chips">
+                  {% for d in v.recent_proposals %}
+                  <span class="duty-chip outcome-{{ d.outcome }}" title="epoch {{ d.epoch }} · slot {{ d.slot }} · {{ d.outcome }}">{{ d.outcome[0]|upper }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
           </article>
           {% endfor %}
         </div>
