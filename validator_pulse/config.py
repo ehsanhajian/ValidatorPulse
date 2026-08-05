@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,6 +49,15 @@ class Settings(BaseSettings):
 
     host: str = "127.0.0.1"
     port: int = 3000
+
+    @field_validator("parachain_id", mode="before")
+    @classmethod
+    def _empty_parachain_id(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value
 
     def indices(self) -> list[int]:
         values: list[int] = []
