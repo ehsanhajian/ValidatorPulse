@@ -15,7 +15,10 @@ from validator_pulse.collectors.beacon import (
     check_block_at_slot,
     fetch_attestation_rewards,
     fetch_attester_duties,
+    fetch_block_rewards,
     fetch_proposer_duties,
+    fetch_sync_committee_duties,
+    fetch_sync_committee_rewards,
 )
 from validator_pulse.config import Settings
 from validator_pulse.models import (
@@ -28,14 +31,23 @@ from validator_pulse.models import (
 
 def test_outcome_from_rewards_success_late_missed() -> None:
     assert _outcome_from_rewards(
-        {"source": "10", "target": "10", "head": "5", "inclusion_delay": "1"}
-    ) == ("success", 1, 25)
+        {
+            "source": "10",
+            "target": "10",
+            "head": "5",
+            "inclusion_delay": "1",
+            "inactivity": "-2",
+        }
+    ) == ("success", None, 24)
     assert _outcome_from_rewards(
         {"source": "10", "target": "10", "head": "0", "inclusion_delay": "3"}
-    ) == ("late", 3, 20)
+    ) == ("late", None, 23)
     assert _outcome_from_rewards(
         {"source": "0", "target": "0", "head": "0", "inclusion_delay": "0"}
-    ) == ("missed", 0, 0)
+    ) == ("missed", None, 0)
+    assert _outcome_from_rewards(
+        {"source": "-3", "target": "-4", "head": "0", "inclusion_delay": "0"}
+    ) == ("missed", None, -7)
 
 
 def test_duty_store_persists_and_aggregates() -> None:
@@ -107,6 +119,18 @@ def test_refresh_live_duties_resolves_from_beacon_apis() -> None:
                 "validator_pulse.chains.ethereum.duty_tracker.check_block_at_slot",
                 new_callable=AsyncMock,
             ) as block,
+            patch(
+                "validator_pulse.chains.ethereum.duty_tracker.fetch_block_rewards",
+                new_callable=AsyncMock,
+            ) as block_rewards,
+            patch(
+                "validator_pulse.chains.ethereum.duty_tracker.fetch_sync_committee_duties",
+                new_callable=AsyncMock,
+            ) as sync_duties,
+            patch(
+                "validator_pulse.chains.ethereum.duty_tracker.fetch_sync_committee_rewards",
+                new_callable=AsyncMock,
+            ) as sync_rewards,
         ):
             # head_slot = 32*5 + 10 → head_epoch=5; lookback covers 2..5
             att.side_effect = lambda url, epoch, indices: (
@@ -139,10 +163,18 @@ def test_refresh_live_duties_resolves_from_beacon_apis() -> None:
             )
             prop.side_effect = lambda url, epoch: (
                 [{"validator_index": 42, "slot": epoch * 32 + 8}]
-                if epoch == 4
+                if epoch in (3, 4)
                 else []
             )
-            block.return_value = False
+            block.side_effect = lambda url, slot: slot == 3 * 32 + 8
+            block_rewards.return_value = {
+                "proposer_index": 42,
+                "total": 50,
+            }
+            sync_duties.side_effect = lambda url, epoch, indices: (
+                {42} if epoch == 5 else set()
+            )
+            sync_rewards.return_value = {42: 3}
 
             await refresh_live_duties(
                 "http://beacon.test",
@@ -157,7 +189,12 @@ def test_refresh_live_duties_resolves_from_beacon_apis() -> None:
     assert view.attestations.successful == 1
     assert view.attestations.missed == 1
     assert view.attestations.expected == 3
+    assert view.proposals.successful == 1
     assert view.proposals.missed == 1
+    assert view.attestation_rewards_gwei == 29
+    assert view.proposal_rewards_gwei == 50
+    assert view.sync_committee_rewards_gwei == 30
+    assert view.duty_rewards_gwei == 109
     assert view.recent_attestations
     assert any(d.outcome == "pending" for d in view.recent_attestations)
 
@@ -224,6 +261,8 @@ def test_live_adapter_does_not_invent_attestation_from_status() -> None:
     assert v.attestations.successful == 0
     assert v.attestations.missed == 0
     assert v.recent_attestations == []
+    # A large balance delta must not be presented as a duty reward.
+    assert v.rewards_gwei == 0
 
 
 def test_demo_mode_unchanged() -> None:
@@ -270,6 +309,73 @@ def test_beacon_duty_helpers_handle_http_errors() -> None:
             assert await fetch_attester_duties("http://b", 1, [1]) == []
             assert await fetch_proposer_duties("http://b", 1) == []
             assert await fetch_attestation_rewards("http://b", 1, [1]) is None
+            assert await fetch_block_rewards("http://b", 99) is None
+            assert await fetch_sync_committee_duties("http://b", 1, [1]) is None
+            assert (
+                await fetch_sync_committee_rewards("http://b", 99, [1]) is None
+            )
             assert await check_block_at_slot("http://b", 99) is False
+
+    asyncio.run(with_mock())
+
+
+def test_beacon_reward_helpers_parse_signed_rewards() -> None:
+    import httpx
+
+    async def with_mock() -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            path = request.url.path
+            if "/rewards/blocks/" in path:
+                return httpx.Response(
+                    200,
+                    json={
+                        "data": {
+                            "proposer_index": "42",
+                            "total": "1234",
+                        }
+                    },
+                )
+            if "/duties/sync/" in path:
+                return httpx.Response(
+                    200,
+                    json={
+                        "data": [
+                            {
+                                "validator_index": "42",
+                                "validator_sync_committee_indices": ["1"],
+                            }
+                        ]
+                    },
+                )
+            if "/rewards/sync_committee/" in path:
+                return httpx.Response(
+                    200,
+                    json={
+                        "data": [
+                            {"validator_index": "42", "reward": "9"},
+                            {"validator_index": "43", "reward": "-3"},
+                        ]
+                    },
+                )
+            return httpx.Response(404)
+
+        transport = httpx.MockTransport(handler)
+        original = httpx.AsyncClient
+
+        def factory(*args, **kwargs):
+            kwargs["transport"] = transport
+            return original(*args, **kwargs)
+
+        with patch("httpx.AsyncClient", side_effect=factory):
+            assert await fetch_block_rewards("http://b", 99) == {
+                "proposer_index": 42,
+                "total": 1234,
+            }
+            assert await fetch_sync_committee_duties(
+                "http://b", 3, [42, 43]
+            ) == {42}
+            assert await fetch_sync_committee_rewards(
+                "http://b", 99, [42, 43]
+            ) == {42: 9, 43: -3}
 
     asyncio.run(with_mock())

@@ -147,11 +147,6 @@ class EthereumAdapter:
                 peer_count=consensus.connected_peers,
                 effectiveness_score=effectiveness,
             )
-            # Prefer duty-window rewards when available; fall back to balance delta (#18).
-            rewards = view.duty_rewards_gwei
-            if rewards <= 0:
-                rewards = max(0, b["balance_gwei"] - b["effective_balance_gwei"])
-
             validators.append(
                 ValidatorStats(
                     index=index,
@@ -161,7 +156,7 @@ class EthereumAdapter:
                     effective_balance_gwei=b["effective_balance_gwei"],
                     attestations=attestations,
                     proposals=proposals,
-                    rewards_gwei=rewards,
+                    rewards_gwei=view.duty_rewards_gwei,
                     effectiveness_score=effectiveness,
                     slashing_risk_score=slashing_risk,
                     recent_attestations=view.recent_attestations,

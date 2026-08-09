@@ -109,7 +109,7 @@
               <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Collations{% else %}Attested{% endif %}</div><div class="mono">{{ v.attestations.successful }}/{{ v.attestations.expected }}</div></div>
               <div><div class="muted">Missed</div><div class="mono">{{ v.attestations.missed }}</div></div>
               <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Blocks{% else %}Proposals{% endif %}</div><div class="mono">{{ v.proposals.successful }}/{{ v.proposals.expected or "—" }}</div></div>
-              <div><div class="muted">Rewards</div><div class="mono">{{ format_rewards(v.rewards_gwei, snapshot) }}</div></div>
+              <div><div class="muted">{% if snapshot.chain == 'ethereum' %}Window rewards{% else %}Rewards{% endif %}</div><div class="mono">{{ format_rewards(v.rewards_gwei, snapshot) }}</div></div>
             </div>
             {% if v.recent_attestations or v.recent_proposals %}
             <div class="duty-history">
@@ -222,7 +222,8 @@
         <pre id="metrics-preview"># HELP validator_effectiveness_score ...
 validator_effectiveness_score {{ snapshot.metrics.validator_effectiveness_score }}
 validator_missed_attestations_total {{ snapshot.metrics.validator_missed_attestations_total }}
-validator_slashing_risk_score {{ snapshot.metrics.validator_slashing_risk_score }}</pre>
+validator_slashing_risk_score {{ snapshot.metrics.validator_slashing_risk_score }}
+validator_rewards_gwei {{ snapshot.validators|sum(attribute='rewards_gwei') }}</pre>
         <a href="/api/metrics">Open /api/metrics</a>
       </div>
     </section>

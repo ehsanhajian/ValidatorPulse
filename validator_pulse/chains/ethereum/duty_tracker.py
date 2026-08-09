@@ -10,7 +10,10 @@ from validator_pulse.collectors.beacon import (
     check_block_at_slot,
     fetch_attestation_rewards,
     fetch_attester_duties,
+    fetch_block_rewards,
     fetch_proposer_duties,
+    fetch_sync_committee_duties,
+    fetch_sync_committee_rewards,
 )
 from validator_pulse.models import (
     AttestationDuty,
@@ -25,8 +28,7 @@ ATTESTATION_WINDOW = 32
 PROPOSAL_WINDOW = 64
 LOOKBACK_EPOCHS = 4
 RECENT_UI = 8
-# Inclusion delay >= this counts as late (demo uses delay 2+).
-LATE_INCLUSION_DELAY = 2
+SYNC_REWARD_BACKFILL_SLOTS = 32
 
 
 @dataclass
@@ -37,6 +39,9 @@ class ValidatorDutyView:
     recent_proposals: list[ProposalDuty]
     consecutive_missed_attestations: int
     duty_rewards_gwei: int
+    attestation_rewards_gwei: int
+    proposal_rewards_gwei: int
+    sync_committee_rewards_gwei: int
 
 
 @dataclass
@@ -45,12 +50,14 @@ class DutyHistoryStore:
 
     _attestations: dict[int, dict[int, AttestationDuty]] = field(default_factory=dict)
     _proposals: dict[int, dict[int, ProposalDuty]] = field(default_factory=dict)
+    _sync_rewards: dict[int, dict[int, int]] = field(default_factory=dict)
     _lock: Lock = field(default_factory=Lock)
 
     def clear(self) -> None:
         with self._lock:
             self._attestations.clear()
             self._proposals.clear()
+            self._sync_rewards.clear()
 
     def upsert_attestation(self, duty: AttestationDuty) -> None:
         with self._lock:
@@ -75,11 +82,27 @@ class DutyHistoryStore:
                 and duty.outcome == "pending"
             ):
                 return
+            if (
+                existing
+                and existing.reward_gwei is not None
+                and duty.reward_gwei is None
+            ):
+                duty = duty.model_copy(update={"reward_gwei": existing.reward_gwei})
             by_slot[duty.slot] = duty
+
+    def has_sync_reward(self, validator_index: int, slot: int) -> bool:
+        with self._lock:
+            return slot in self._sync_rewards.get(validator_index, {})
+
+    def upsert_sync_reward(
+        self, validator_index: int, slot: int, reward_gwei: int
+    ) -> None:
+        with self._lock:
+            self._sync_rewards.setdefault(validator_index, {})[slot] = reward_gwei
 
     def prune(self, head_epoch: int) -> None:
         min_epoch = head_epoch - ATTESTATION_WINDOW + 1
-        min_slot = max(0, (head_epoch - PROPOSAL_WINDOW) * SLOTS_PER_EPOCH)
+        min_slot = max(0, min_epoch * SLOTS_PER_EPOCH)
         with self._lock:
             for index, by_epoch in list(self._attestations.items()):
                 self._attestations[index] = {
@@ -91,11 +114,16 @@ class DutyHistoryStore:
                 self._proposals[index] = {
                     slot: duty for slot, duty in by_slot.items() if slot >= min_slot
                 }
+            for index, by_slot in list(self._sync_rewards.items()):
+                self._sync_rewards[index] = {
+                    slot: reward for slot, reward in by_slot.items() if slot >= min_slot
+                }
 
     def view_for(self, validator_index: int) -> ValidatorDutyView:
         with self._lock:
             att_map = dict(self._attestations.get(validator_index, {}))
             prop_map = dict(self._proposals.get(validator_index, {}))
+            sync_map = dict(self._sync_rewards.get(validator_index, {}))
 
         attestations = sorted(
             att_map.values(), key=lambda d: d.epoch, reverse=True
@@ -105,7 +133,7 @@ class DutyHistoryStore:
         ]
 
         successful = missed = late = pending = 0
-        duty_rewards = 0
+        attestation_rewards = 0
         for duty in attestations:
             if duty.outcome == "success":
                 successful += 1
@@ -115,10 +143,11 @@ class DutyHistoryStore:
                 late += 1
             else:
                 pending += 1
-            if duty.reward_gwei:
-                duty_rewards += duty.reward_gwei
+            if duty.reward_gwei is not None:
+                attestation_rewards += duty.reward_gwei
 
         prop_ok = prop_miss = prop_pending = 0
+        proposal_rewards = 0
         for duty in proposals:
             if duty.outcome == "success":
                 prop_ok += 1
@@ -126,8 +155,10 @@ class DutyHistoryStore:
                 prop_miss += 1
             else:
                 prop_pending += 1
-            if duty.reward_gwei:
-                duty_rewards += duty.reward_gwei
+            if duty.reward_gwei is not None:
+                proposal_rewards += duty.reward_gwei
+
+        sync_committee_rewards = sum(sync_map.values())
 
         consecutive = 0
         for duty in attestations:
@@ -153,7 +184,12 @@ class DutyHistoryStore:
             recent_attestations=attestations[:RECENT_UI],
             recent_proposals=[p for p in proposals if p.outcome != "pending"][:RECENT_UI],
             consecutive_missed_attestations=consecutive,
-            duty_rewards_gwei=duty_rewards,
+            duty_rewards_gwei=(
+                attestation_rewards + proposal_rewards + sync_committee_rewards
+            ),
+            attestation_rewards_gwei=attestation_rewards,
+            proposal_rewards_gwei=proposal_rewards,
+            sync_committee_rewards_gwei=sync_committee_rewards,
         )
 
 
@@ -173,14 +209,17 @@ def _outcome_from_rewards(entry: dict) -> tuple[DutyOutcome, int | None, int]:
     source = int(entry.get("source") or 0)
     target = int(entry.get("target") or 0)
     head = int(entry.get("head") or 0)
-    raw_delay = entry.get("inclusion_delay")
-    delay = int(raw_delay) if raw_delay not in (None, "") else None
-    reward = max(0, source + target + head)
-    if source == 0 and target == 0 and head == 0:
-        return "missed", delay, 0
-    if delay is not None and delay >= LATE_INCLUSION_DELAY:
-        return "late", delay, reward
-    return "success", delay, reward
+    inclusion_reward = int(entry.get("inclusion_delay") or 0)
+    inactivity = int(entry.get("inactivity") or 0)
+    reward = source + target + head + inclusion_reward + inactivity
+    if source <= 0 and target <= 0 and head <= 0 and inclusion_reward <= 0:
+        return "missed", None, reward
+    # The rewards API exposes timely-source/target/head components, not the
+    # actual inclusion delay. Treat a valid source/target with no timely-head
+    # reward as late/degraded without inventing a delay value.
+    if head <= 0 and (source > 0 or target > 0 or inclusion_reward > 0):
+        return "late", None, reward
+    return "success", None, reward
 
 
 async def refresh_live_duties(
@@ -252,15 +291,45 @@ async def refresh_live_duties(
                     outcome = "pending"
                 else:
                     outcome = "success" if proposed else "missed"
+            proposal_reward: int | None = None
+            if outcome == "success":
+                reward_data = await fetch_block_rewards(beacon_api_url, slot)
+                if reward_data and int(reward_data["proposer_index"]) == index:
+                    proposal_reward = int(reward_data["total"])
             store.upsert_proposal(
                 ProposalDuty(
                     epoch=epoch,
                     slot=slot,
                     validator_index=index,
                     outcome=outcome,
-                    reward_gwei=None,
+                    reward_gwei=proposal_reward,
                 )
             )
+
+        sync_validators = await fetch_sync_committee_duties(
+            beacon_api_url, epoch, validator_indices
+        )
+        if sync_validators:
+            epoch_start = epoch * SLOTS_PER_EPOCH
+            epoch_end = min((epoch + 1) * SLOTS_PER_EPOCH, head_slot)
+            backfill_start = max(
+                epoch_start, head_slot - SYNC_REWARD_BACKFILL_SLOTS
+            )
+            for slot in range(backfill_start, epoch_end):
+                pending_indices = [
+                    index
+                    for index in sync_validators
+                    if not store.has_sync_reward(index, slot)
+                ]
+                if not pending_indices:
+                    continue
+                rewards = await fetch_sync_committee_rewards(
+                    beacon_api_url, slot, pending_indices
+                )
+                if rewards is None:
+                    continue
+                for index, reward in rewards.items():
+                    store.upsert_sync_reward(index, slot, reward)
 
     store.prune(head_epoch)
 

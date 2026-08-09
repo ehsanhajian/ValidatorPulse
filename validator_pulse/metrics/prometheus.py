@@ -47,6 +47,16 @@ def to_prometheus(snapshot: PulseSnapshot) -> str:
             help_text="Fleet-average slashing risk score (0-100)",
         )
     )
+    out.append(
+        _line(
+            "validator_rewards_gwei",
+            sum(v.rewards_gwei for v in snapshot.validators),
+            help_text=(
+                "Net consensus duty rewards in the rolling monitoring window "
+                "(attestation, proposal, and sync committee)"
+            ),
+        )
+    )
 
     for v in snapshot.validators:
         labels = {"validator_index": str(v.index)}

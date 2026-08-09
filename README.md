@@ -53,7 +53,7 @@ BEACON_API_URL=http://127.0.0.1:5052
 VALIDATOR_INDICES=123456,789012
 ```
 
-Live mode pulls attestation / proposal duties from the Beacon API (attester & proposer duties, attestation rewards, block presence) and **persists** them across poll cycles so missed/success counts and recent-duty lists update over epochs. Demo mode still simulates a full duty window without a beacon node.
+Live mode pulls attestation / proposal duties from the Beacon API and **persists** them across poll cycles so missed/success counts and recent-duty lists update over epochs. Its rolling rewards total uses signed consensus-layer attestation, proposal, and sync-committee rewards from the Beacon rewards APIs—never `balance − effective_balance`. Execution tips and MEV payments are outside this total. Demo mode still simulates a full duty window without a beacon node.
 
 ### Polkadot / parachain collators
 
@@ -202,6 +202,7 @@ Core series:
 - `validator_effectiveness_score`
 - `validator_missed_attestations_total`
 - `validator_slashing_risk_score`
+- `validator_rewards_gwei` (rolling net consensus duty rewards)
 
 Also exports per-validator labels plus consensus/infra gauges.
 
