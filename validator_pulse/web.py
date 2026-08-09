@@ -47,6 +47,13 @@ def _format_balance(amount: int, snapshot) -> str:
 
 
 def _format_rewards(amount: int, snapshot) -> str:
+    if (
+        getattr(snapshot, "reward_token_base_unit", "") == "gwei"
+        and getattr(snapshot, "reward_token_symbol", "") == "ETH"
+    ):
+        if abs(amount) < 1_000_000:
+            return f"{amount:,} gwei"
+        return f"{amount / 1e9:.6f} ETH"
     return _format_balance(amount, snapshot)
 
 

@@ -51,6 +51,12 @@ class ValidatorStats(BaseModel):
     attestations: AttestationStats
     proposals: ProposalStats
     rewards_gwei: int
+    attestation_rewards_gwei: int = 0
+    proposal_rewards_gwei: int = 0
+    sync_committee_rewards_gwei: int = 0
+    reward_window_start_epoch: int | None = None
+    reward_window_end_epoch: int | None = None
+    reward_data_complete: bool = True
     effectiveness_score: float
     slashing_risk_score: float
     recent_attestations: list[AttestationDuty] = Field(default_factory=list)

@@ -100,7 +100,7 @@ async def collect_validator_balances(
 
 async def fetch_attester_duties(
     beacon_api_url: str, epoch: int, validator_indices: list[int]
-) -> list[dict]:
+) -> list[dict] | None:
     """POST /eth/v1/validator/duties/attester/{epoch}."""
     if not validator_indices:
         return []
@@ -112,7 +112,7 @@ async def fetch_attester_duties(
             json=body,
         )
         if res.status_code >= 400:
-            return []
+            return None
         data = res.json().get("data", []) or []
     return [
         {
@@ -124,13 +124,15 @@ async def fetch_attester_duties(
     ]
 
 
-async def fetch_proposer_duties(beacon_api_url: str, epoch: int) -> list[dict]:
+async def fetch_proposer_duties(
+    beacon_api_url: str, epoch: int
+) -> list[dict] | None:
     """GET /eth/v1/validator/duties/proposer/{epoch}."""
     base = beacon_api_url.rstrip("/")
     async with httpx.AsyncClient(timeout=12.0) as client:
         res = await client.get(f"{base}/eth/v1/validator/duties/proposer/{epoch}")
         if res.status_code >= 400:
-            return []
+            return None
         data = res.json().get("data", []) or []
     return [
         {
@@ -171,6 +173,66 @@ async def fetch_attestation_rewards(
         except (TypeError, ValueError):
             continue
         out[index] = item
+    return out
+
+
+async def fetch_block_rewards(beacon_api_url: str, slot: int) -> dict | None:
+    """GET consensus-layer proposer rewards for a produced block."""
+    base = beacon_api_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        res = await client.get(f"{base}/eth/v1/beacon/rewards/blocks/{slot}")
+        if res.status_code >= 400:
+            return None
+        data = res.json().get("data", {}) or {}
+    if not data:
+        return None
+    return {
+        "proposer_index": int(data.get("proposer_index") or 0),
+        "total": int(data.get("total") or 0),
+    }
+
+
+async def fetch_sync_committee_duties(
+    beacon_api_url: str, epoch: int, validator_indices: list[int]
+) -> set[int] | None:
+    """Return monitored validators assigned to the epoch's sync committee."""
+    if not validator_indices:
+        return set()
+    base = beacon_api_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=12.0) as client:
+        res = await client.post(
+            f"{base}/eth/v1/validator/duties/sync/{epoch}",
+            json=[str(i) for i in validator_indices],
+        )
+        if res.status_code >= 400:
+            return None
+        data = res.json().get("data", []) or []
+    return {int(item.get("validator_index") or 0) for item in data}
+
+
+async def fetch_sync_committee_rewards(
+    beacon_api_url: str, slot: int, validator_indices: list[int]
+) -> dict[int, int] | None:
+    """POST signed per-validator sync-committee rewards for a block slot."""
+    if not validator_indices:
+        return {}
+    base = beacon_api_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=12.0) as client:
+        res = await client.post(
+            f"{base}/eth/v1/beacon/rewards/sync_committee/{slot}",
+            json=[str(i) for i in validator_indices],
+        )
+        if res.status_code >= 400:
+            return None
+        data = res.json().get("data", []) or []
+
+    out: dict[int, int] = {}
+    for item in data:
+        try:
+            index = int(item.get("validator_index") or 0)
+            out[index] = int(item.get("reward") or 0)
+        except (TypeError, ValueError):
+            continue
     return out
 
 
