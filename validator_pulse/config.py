@@ -34,10 +34,17 @@ class Settings(BaseSettings):
     # Optional overrides when parachain token isn't in the built-in map
     reward_token_symbol: str | None = None
     reward_token_decimals: int | None = None
-    # Fetch operator display names from explorers (Subscan / beaconcha.in)
+    # Fetch operator display names from explorers and optional identity sources
     fetch_operator_names: bool = True
     subscan_api_key: str | None = None
     beaconcha_base_url: str = "https://beaconcha.in"
+    beaconcha_api_key: str | None = None
+    rated_api_key: str | None = None
+    rated_api_base_url: str = "https://api.rated.network"
+    rated_network: str = "mainnet"
+    ens_lookup_enabled: bool = False
+    ens_api_key: str | None = None
+    ens_api_base_url: str = "https://api.enswhois.com"
     poll_interval_seconds: int = 12
     demo_mode: bool = True
 

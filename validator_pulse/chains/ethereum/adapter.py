@@ -151,6 +151,7 @@ class EthereumAdapter:
                 ValidatorStats(
                     index=index,
                     pubkey=b.get("pubkey"),
+                    withdrawal_address=b.get("withdrawal_address"),
                     status=b["status"],
                     balance_gwei=b["balance_gwei"],
                     effective_balance_gwei=b["effective_balance_gwei"],

@@ -44,6 +44,14 @@ async def collect_pulse(
         enabled=settings.fetch_operator_names,
         subscan_api_key=settings.subscan_api_key,
         beaconcha_base_url=settings.beaconcha_base_url,
+        beaconcha_api_key=settings.beaconcha_api_key,
+        beacon_api_url=settings.beacon_api_url if not demo_mode else None,
+        rated_api_key=settings.rated_api_key,
+        rated_api_base_url=settings.rated_api_base_url,
+        rated_network=settings.rated_network,
+        ens_lookup_enabled=settings.ens_lookup_enabled,
+        ens_api_key=settings.ens_api_key,
+        ens_api_base_url=settings.ens_api_base_url,
     )
 
     metrics = aggregate_fleet_metrics(validators)
