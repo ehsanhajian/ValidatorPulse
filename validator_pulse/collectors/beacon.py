@@ -7,6 +7,20 @@ from validator_pulse.models import ConsensusHealth, HealthStatus
 SLOTS_PER_EPOCH = 32
 
 
+def _withdrawal_address(credentials: str | None) -> str | None:
+    """Extract an execution withdrawal address from 0x01/0x02 credentials."""
+    if not credentials or not isinstance(credentials, str):
+        return None
+    value = credentials.lower()
+    if (
+        len(value) == 66
+        and value.startswith(("0x01", "0x02"))
+        and all(char in "0123456789abcdef" for char in value[2:])
+    ):
+        return f"0x{value[-40:]}"
+    return None
+
+
 def _consensus_status(*, reachable: bool, syncing: bool, peer_count: int) -> HealthStatus:
     if not reachable:
         return "critical"
@@ -90,6 +104,9 @@ async def collect_validator_balances(
             {
                 "index": int(item.get("index") or 0),
                 "pubkey": validator.get("pubkey"),
+                "withdrawal_address": _withdrawal_address(
+                    validator.get("withdrawal_credentials")
+                ),
                 "status": item.get("status") or "unknown",
                 "balance_gwei": int(item.get("balance") or 0),
                 "effective_balance_gwei": int(validator.get("effective_balance") or 0),

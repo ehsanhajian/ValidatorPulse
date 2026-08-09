@@ -128,6 +128,16 @@ Where to find Ethereum identifiers:
 - **Index / pubkey:** [beaconcha.in](https://beaconcha.in), your validator client logs, or deposit-data JSON
 - **Beacon API URL:** consensus client HTTP API (Lighthouse/Teku/Nimbus/Prysm), often `http://127.0.0.1:5052`
 
+Ethereum display-name enrichment is layered and fail-soft:
+
+1. beaconcha.in validator name
+2. [Rated](https://docs.rated.network/rated-api/api-reference/v1/ethereum/metadata/get-pool-and-operator-mappings-for-validators) node-operator / DVT / pool mapping (requires `RATED_API_KEY`)
+3. ENS primary name for the execution withdrawal address (opt in with `ENS_LOOKUP_ENABLED=true`)
+4. graffiti from the validator's newest successful proposal available on the local Beacon API
+5. validator index/pubkey fallback
+
+Results (including misses) are cached in-process for one hour. Set `FETCH_OPERATOR_NAMES=false` to disable every lookup. beaconcha.in and Rated limits depend on the API plan. The default ENSWhois endpoint permits 5 unauthenticated requests per minute; set `ENS_API_KEY` for a higher allowance. ENS lookup is disabled by default so withdrawal addresses are not sent to that service unless explicitly enabled. Hovering a resolved label still shows the full validator pubkey.
+
 Where to find Polkadot collator identifiers:
 
 - **SS58 address:** collator account / session keys page on a parachain explorer
@@ -161,9 +171,14 @@ With `DEMO_MODE=true` (default), the app simulates duty data so you can explore 
 | `PARACHAIN_ID` | Parachain id (token lookup + labeling) | unset (DOT) |
 | `REWARD_TOKEN_SYMBOL` | Override native token symbol | unset |
 | `REWARD_TOKEN_DECIMALS` | Override token decimals | unset |
-| `FETCH_OPERATOR_NAMES` | Resolve display names via Subscan / beaconcha.in | `true` |
+| `FETCH_OPERATOR_NAMES` | Enable all optional operator-name enrichment | `true` |
 | `SUBSCAN_API_KEY` | Optional Subscan API key | unset |
 | `BEACONCHA_BASE_URL` | Ethereum explorer API base | `https://beaconcha.in` |
+| `BEACONCHA_API_KEY` | Optional beaconcha.in bearer key | unset |
+| `RATED_API_KEY` | Rated operator-directory API key | unset |
+| `RATED_API_BASE_URL` / `RATED_NETWORK` | Rated endpoint / Ethereum network | `https://api.rated.network` / `mainnet` |
+| `ENS_LOOKUP_ENABLED` | Resolve withdrawal addresses to ENS primary names | `false` |
+| `ENS_API_KEY` / `ENS_API_BASE_URL` | Optional ENSWhois key / endpoint | unset / `https://api.enswhois.com` |
 | `DEMO_MODE` | Force demo data | `true` |
 | `POLL_INTERVAL_SECONDS` | Cache / refresh window | `12` |
 | `HOST` / `PORT` | Bind address | `127.0.0.1` / `3000` |

@@ -44,7 +44,9 @@ class ProposalStats(BaseModel):
 class ValidatorStats(BaseModel):
     index: int
     pubkey: str | None = None
+    withdrawal_address: str | None = None
     display_name: str | None = None
+    display_name_source: str | None = None
     status: str
     balance_gwei: int
     effective_balance_gwei: int
