@@ -109,7 +109,21 @@
               <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Collations{% else %}Attested{% endif %}</div><div class="mono">{{ v.attestations.successful }}/{{ v.attestations.expected }}</div></div>
               <div><div class="muted">Missed</div><div class="mono">{{ v.attestations.missed }}</div></div>
               <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Blocks{% else %}Proposals{% endif %}</div><div class="mono">{{ v.proposals.successful }}/{{ v.proposals.expected or "—" }}</div></div>
-              <div><div class="muted">{% if snapshot.chain == 'ethereum' %}Window rewards{% else %}Rewards{% endif %}</div><div class="mono">{{ format_rewards(v.rewards_gwei, snapshot) }}</div></div>
+              <div>
+                <div class="muted">
+                  {% if snapshot.chain == 'ethereum' %}
+                    Window rewards · {{ "complete" if v.reward_data_complete else "partial" }}
+                  {% else %}
+                    Rewards
+                  {% endif %}
+                </div>
+                <div
+                  class="mono"
+                  {% if snapshot.chain == 'ethereum' %}
+                  title="Attestations {{ v.attestation_rewards_gwei }} gwei · proposals {{ v.proposal_rewards_gwei }} gwei · sync committee {{ v.sync_committee_rewards_gwei }} gwei{% if v.reward_window_start_epoch is not none %} · epochs {{ v.reward_window_start_epoch }}–{{ v.reward_window_end_epoch }}{% endif %}"
+                  {% endif %}
+                >{{ format_rewards(v.rewards_gwei, snapshot) }}</div>
+              </div>
             </div>
             {% if v.recent_attestations or v.recent_proposals %}
             <div class="duty-history">

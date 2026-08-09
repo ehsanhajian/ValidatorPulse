@@ -79,3 +79,7 @@ def test_prometheus_exports_fleet_and_validator_reward_window() -> None:
     assert "validator_rewards_gwei 15" in output
     assert 'validator_rewards_gwei{validator_index="1"} 25' in output
     assert 'validator_rewards_gwei{validator_index="2"} -10' in output
+    assert 'validator_attestation_rewards_gwei{validator_index="1"} 0' in output
+    assert 'validator_proposal_rewards_gwei{validator_index="1"} 0' in output
+    assert 'validator_sync_committee_rewards_gwei{validator_index="1"} 0' in output
+    assert 'validator_rewards_complete{validator_index="1"} 1' in output

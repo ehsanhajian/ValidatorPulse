@@ -72,12 +72,33 @@ def test_duty_store_persists_and_aggregates() -> None:
     assert view.proposals.successful == 1
     assert view.recent_attestations[0].epoch == 10
     assert len(view.recent_proposals) == 1
+    assert view.reward_window_start_epoch == 9
+    assert view.reward_window_end_epoch == 10
+    assert not view.reward_data_complete
 
     # Pending must not overwrite a resolved outcome.
     store.upsert_attestation(
         AttestationDuty(epoch=10, slot=320, validator_index=1, outcome="pending")
     )
     assert store.view_for(1).attestations.successful == 1
+
+
+def test_reward_window_completeness_requires_full_clean_window() -> None:
+    store = DutyHistoryStore()
+    for epoch in range(100, 132):
+        store.upsert_attestation(
+            AttestationDuty(
+                epoch=epoch,
+                slot=epoch * 32,
+                validator_index=1,
+                outcome="success",
+                reward_gwei=10,
+            )
+        )
+    assert store.view_for(1).reward_data_complete
+
+    store.mark_reward_incomplete([1])
+    assert not store.view_for(1).reward_data_complete
 
 
 def test_effectiveness_inputs_exclude_pending() -> None:
@@ -195,8 +216,59 @@ def test_refresh_live_duties_resolves_from_beacon_apis() -> None:
     assert view.proposal_rewards_gwei == 50
     assert view.sync_committee_rewards_gwei == 30
     assert view.duty_rewards_gwei == 109
+    assert not view.reward_data_complete
     assert view.recent_attestations
     assert any(d.outcome == "pending" for d in view.recent_attestations)
+
+
+def test_missing_reward_entry_stays_unknown_not_missed() -> None:
+    store = DutyHistoryStore()
+
+    async def run() -> None:
+        with (
+            patch(
+                "validator_pulse.chains.ethereum.duty_tracker.fetch_attester_duties",
+                new_callable=AsyncMock,
+                side_effect=lambda url, epoch, indices: (
+                    [
+                        {
+                            "validator_index": 42,
+                            "slot": epoch * 32,
+                            "committee_index": 0,
+                        }
+                    ]
+                    if epoch == 2
+                    else []
+                ),
+            ),
+            patch(
+                "validator_pulse.chains.ethereum.duty_tracker.fetch_attestation_rewards",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+            patch(
+                "validator_pulse.chains.ethereum.duty_tracker.fetch_proposer_duties",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "validator_pulse.chains.ethereum.duty_tracker.fetch_sync_committee_duties",
+                new_callable=AsyncMock,
+                return_value=set(),
+            ),
+        ):
+            await refresh_live_duties(
+                "http://beacon.test",
+                [42],
+                head_slot=3 * 32,
+                store=store,
+            )
+
+    asyncio.run(run())
+    view = store.view_for(42)
+    assert view.attestations.missed == 0
+    assert view.recent_attestations[0].outcome == "pending"
+    assert not view.reward_data_complete
 
 
 def test_live_adapter_does_not_invent_attestation_from_status() -> None:
@@ -306,8 +378,8 @@ def test_beacon_duty_helpers_handle_http_errors() -> None:
             return original(*args, **kwargs)
 
         with patch("httpx.AsyncClient", side_effect=factory):
-            assert await fetch_attester_duties("http://b", 1, [1]) == []
-            assert await fetch_proposer_duties("http://b", 1) == []
+            assert await fetch_attester_duties("http://b", 1, [1]) is None
+            assert await fetch_proposer_duties("http://b", 1) is None
             assert await fetch_attestation_rewards("http://b", 1, [1]) is None
             assert await fetch_block_rewards("http://b", 99) is None
             assert await fetch_sync_committee_duties("http://b", 1, [1]) is None

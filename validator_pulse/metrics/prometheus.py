@@ -67,6 +67,35 @@ def to_prometheus(snapshot: PulseSnapshot) -> str:
         out.append(_line("validator_slashing_risk_score", v.slashing_risk_score, labels))
         out.append(_line("validator_balance_gwei", v.balance_gwei, labels))
         out.append(_line("validator_rewards_gwei", v.rewards_gwei, labels))
+        if snapshot.chain == "ethereum":
+            out.append(
+                _line(
+                    "validator_attestation_rewards_gwei",
+                    v.attestation_rewards_gwei,
+                    labels,
+                )
+            )
+            out.append(
+                _line(
+                    "validator_proposal_rewards_gwei",
+                    v.proposal_rewards_gwei,
+                    labels,
+                )
+            )
+            out.append(
+                _line(
+                    "validator_sync_committee_rewards_gwei",
+                    v.sync_committee_rewards_gwei,
+                    labels,
+                )
+            )
+            out.append(
+                _line(
+                    "validator_rewards_complete",
+                    int(v.reward_data_complete),
+                    labels,
+                )
+            )
 
     c = snapshot.consensus
     i = snapshot.infrastructure

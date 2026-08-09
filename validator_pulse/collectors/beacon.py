@@ -100,7 +100,7 @@ async def collect_validator_balances(
 
 async def fetch_attester_duties(
     beacon_api_url: str, epoch: int, validator_indices: list[int]
-) -> list[dict]:
+) -> list[dict] | None:
     """POST /eth/v1/validator/duties/attester/{epoch}."""
     if not validator_indices:
         return []
@@ -112,7 +112,7 @@ async def fetch_attester_duties(
             json=body,
         )
         if res.status_code >= 400:
-            return []
+            return None
         data = res.json().get("data", []) or []
     return [
         {
@@ -124,13 +124,15 @@ async def fetch_attester_duties(
     ]
 
 
-async def fetch_proposer_duties(beacon_api_url: str, epoch: int) -> list[dict]:
+async def fetch_proposer_duties(
+    beacon_api_url: str, epoch: int
+) -> list[dict] | None:
     """GET /eth/v1/validator/duties/proposer/{epoch}."""
     base = beacon_api_url.rstrip("/")
     async with httpx.AsyncClient(timeout=12.0) as client:
         res = await client.get(f"{base}/eth/v1/validator/duties/proposer/{epoch}")
         if res.status_code >= 400:
-            return []
+            return None
         data = res.json().get("data", []) or []
     return [
         {

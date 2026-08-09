@@ -42,6 +42,9 @@ class ValidatorDutyView:
     attestation_rewards_gwei: int
     proposal_rewards_gwei: int
     sync_committee_rewards_gwei: int
+    reward_window_start_epoch: int | None
+    reward_window_end_epoch: int | None
+    reward_data_complete: bool
 
 
 @dataclass
@@ -51,6 +54,7 @@ class DutyHistoryStore:
     _attestations: dict[int, dict[int, AttestationDuty]] = field(default_factory=dict)
     _proposals: dict[int, dict[int, ProposalDuty]] = field(default_factory=dict)
     _sync_rewards: dict[int, dict[int, int]] = field(default_factory=dict)
+    _reward_incomplete: set[int] = field(default_factory=set)
     _lock: Lock = field(default_factory=Lock)
 
     def clear(self) -> None:
@@ -58,6 +62,7 @@ class DutyHistoryStore:
             self._attestations.clear()
             self._proposals.clear()
             self._sync_rewards.clear()
+            self._reward_incomplete.clear()
 
     def upsert_attestation(self, duty: AttestationDuty) -> None:
         with self._lock:
@@ -100,6 +105,10 @@ class DutyHistoryStore:
         with self._lock:
             self._sync_rewards.setdefault(validator_index, {})[slot] = reward_gwei
 
+    def mark_reward_incomplete(self, validator_indices: list[int]) -> None:
+        with self._lock:
+            self._reward_incomplete.update(validator_indices)
+
     def prune(self, head_epoch: int) -> None:
         min_epoch = head_epoch - ATTESTATION_WINDOW + 1
         min_slot = max(0, min_epoch * SLOTS_PER_EPOCH)
@@ -124,6 +133,7 @@ class DutyHistoryStore:
             att_map = dict(self._attestations.get(validator_index, {}))
             prop_map = dict(self._proposals.get(validator_index, {}))
             sync_map = dict(self._sync_rewards.get(validator_index, {}))
+            explicitly_incomplete = validator_index in self._reward_incomplete
 
         attestations = sorted(
             att_map.values(), key=lambda d: d.epoch, reverse=True
@@ -159,6 +169,20 @@ class DutyHistoryStore:
                 proposal_rewards += duty.reward_gwei
 
         sync_committee_rewards = sum(sync_map.values())
+        reward_epochs = sorted(
+            duty.epoch
+            for duty in attestations
+            if duty.reward_gwei is not None and duty.outcome != "pending"
+        )
+        reward_window_start = reward_epochs[0] if reward_epochs else None
+        reward_window_end = reward_epochs[-1] if reward_epochs else None
+        reward_data_complete = (
+            not explicitly_incomplete
+            and len(reward_epochs) >= ATTESTATION_WINDOW
+            and reward_window_start is not None
+            and reward_window_end is not None
+            and reward_window_end - reward_window_start + 1 >= ATTESTATION_WINDOW
+        )
 
         consecutive = 0
         for duty in attestations:
@@ -190,6 +214,9 @@ class DutyHistoryStore:
             attestation_rewards_gwei=attestation_rewards,
             proposal_rewards_gwei=proposal_rewards,
             sync_committee_rewards_gwei=sync_committee_rewards,
+            reward_window_start_epoch=reward_window_start,
+            reward_window_end_epoch=reward_window_end,
+            reward_data_complete=reward_data_complete,
         )
 
 
@@ -241,12 +268,17 @@ async def refresh_live_duties(
         attester_duties = await fetch_attester_duties(
             beacon_api_url, epoch, validator_indices
         )
+        if attester_duties is None:
+            store.mark_reward_incomplete(validator_indices)
+            attester_duties = []
         rewards_by_index: dict[int, dict] | None = None
         epoch_complete = head_epoch > epoch
         if epoch_complete:
             rewards_by_index = await fetch_attestation_rewards(
                 beacon_api_url, epoch, validator_indices
             )
+            if rewards_by_index is None:
+                store.mark_reward_incomplete(validator_indices)
 
         for duty in attester_duties:
             index = int(duty["validator_index"])
@@ -258,8 +290,10 @@ async def refresh_live_duties(
             if epoch_complete and rewards_by_index is not None:
                 entry = rewards_by_index.get(index)
                 if entry is None:
-                    outcome = "missed"
-                    reward = 0
+                    # A filtered/client-specific response can omit an index.
+                    # Preserve unknown rather than converting missing data to a miss.
+                    outcome = "pending"
+                    store.mark_reward_incomplete([index])
                 else:
                     outcome, delay, reward = _outcome_from_rewards(entry)
             elif epoch_complete and rewards_by_index is None:
@@ -278,6 +312,9 @@ async def refresh_live_duties(
             )
 
         proposer_duties = await fetch_proposer_duties(beacon_api_url, epoch)
+        if proposer_duties is None:
+            store.mark_reward_incomplete(validator_indices)
+            proposer_duties = []
         for duty in proposer_duties:
             index = int(duty["validator_index"])
             if index not in validator_indices:
@@ -296,6 +333,8 @@ async def refresh_live_duties(
                 reward_data = await fetch_block_rewards(beacon_api_url, slot)
                 if reward_data and int(reward_data["proposer_index"]) == index:
                     proposal_reward = int(reward_data["total"])
+                else:
+                    store.mark_reward_incomplete([index])
             store.upsert_proposal(
                 ProposalDuty(
                     epoch=epoch,
@@ -309,6 +348,8 @@ async def refresh_live_duties(
         sync_validators = await fetch_sync_committee_duties(
             beacon_api_url, epoch, validator_indices
         )
+        if sync_validators is None:
+            store.mark_reward_incomplete(validator_indices)
         if sync_validators:
             epoch_start = epoch * SLOTS_PER_EPOCH
             epoch_end = min((epoch + 1) * SLOTS_PER_EPOCH, head_slot)
@@ -327,6 +368,7 @@ async def refresh_live_duties(
                     beacon_api_url, slot, pending_indices
                 )
                 if rewards is None:
+                    store.mark_reward_incomplete(pending_indices)
                     continue
                 for index, reward in rewards.items():
                     store.upsert_sync_reward(index, slot, reward)
