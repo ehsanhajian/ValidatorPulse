@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-import httpx
-
+from validator_pulse.http_client import (
+    async_rpc_client,
+    format_transport_error,
+    normalize_rpc_url,
+    probe_rpc_endpoint,
+)
 from validator_pulse.models import ConsensusHealth, HealthStatus
 
 SLOTS_PER_EPOCH = 32
@@ -32,9 +36,10 @@ def _consensus_status(*, reachable: bool, syncing: bool, peer_count: int) -> Hea
 
 
 async def collect_consensus(beacon_api_url: str) -> ConsensusHealth:
-    base = beacon_api_url.rstrip("/")
+    base = normalize_rpc_url(beacon_api_url)
     try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        await probe_rpc_endpoint(base)
+        async with async_rpc_client(timeout=8.0) as client:
             health_res = await client.get(f"{base}/eth/v1/node/health")
             syncing_res = await client.get(f"{base}/eth/v1/node/syncing")
             peers_res = await client.get(f"{base}/eth/v1/node/peers")
@@ -77,7 +82,7 @@ async def collect_consensus(beacon_api_url: str) -> ConsensusHealth:
             peer_count=0,
             connected_peers=0,
             status="critical",
-            last_error=str(exc),
+            last_error=format_transport_error(exc),
         )
 
 
@@ -87,9 +92,9 @@ async def collect_validator_balances(
     """Fetch validators by index and/or BLS pubkey via Beacon API `id`."""
     if not validator_ids:
         return []
-    base = beacon_api_url.rstrip("/")
+    base = normalize_rpc_url(beacon_api_url)
     # Beacon nodes commonly accept repeated id= or comma-separated values.
-    async with httpx.AsyncClient(timeout=8.0) as client:
+    async with async_rpc_client(timeout=8.0) as client:
         res = await client.get(
             f"{base}/eth/v1/beacon/states/head/validators",
             params=[("id", vid) for vid in validator_ids],
@@ -121,9 +126,9 @@ async def fetch_attester_duties(
     """POST /eth/v1/validator/duties/attester/{epoch}."""
     if not validator_indices:
         return []
-    base = beacon_api_url.rstrip("/")
+    base = normalize_rpc_url(beacon_api_url)
     body = [str(i) for i in validator_indices]
-    async with httpx.AsyncClient(timeout=12.0) as client:
+    async with async_rpc_client(timeout=12.0) as client:
         res = await client.post(
             f"{base}/eth/v1/validator/duties/attester/{epoch}",
             json=body,
@@ -145,8 +150,8 @@ async def fetch_proposer_duties(
     beacon_api_url: str, epoch: int
 ) -> list[dict] | None:
     """GET /eth/v1/validator/duties/proposer/{epoch}."""
-    base = beacon_api_url.rstrip("/")
-    async with httpx.AsyncClient(timeout=12.0) as client:
+    base = normalize_rpc_url(beacon_api_url)
+    async with async_rpc_client(timeout=12.0) as client:
         res = await client.get(f"{base}/eth/v1/validator/duties/proposer/{epoch}")
         if res.status_code >= 400:
             return None
@@ -171,9 +176,9 @@ async def fetch_attestation_rewards(
     """
     if not validator_indices:
         return {}
-    base = beacon_api_url.rstrip("/")
+    base = normalize_rpc_url(beacon_api_url)
     body = [str(i) for i in validator_indices]
-    async with httpx.AsyncClient(timeout=12.0) as client:
+    async with async_rpc_client(timeout=12.0) as client:
         res = await client.post(
             f"{base}/eth/v1/beacon/rewards/attestations/{epoch}",
             json=body,
@@ -195,8 +200,8 @@ async def fetch_attestation_rewards(
 
 async def fetch_block_rewards(beacon_api_url: str, slot: int) -> dict | None:
     """GET consensus-layer proposer rewards for a produced block."""
-    base = beacon_api_url.rstrip("/")
-    async with httpx.AsyncClient(timeout=8.0) as client:
+    base = normalize_rpc_url(beacon_api_url)
+    async with async_rpc_client(timeout=8.0) as client:
         res = await client.get(f"{base}/eth/v1/beacon/rewards/blocks/{slot}")
         if res.status_code >= 400:
             return None
@@ -215,8 +220,8 @@ async def fetch_sync_committee_duties(
     """Return monitored validators assigned to the epoch's sync committee."""
     if not validator_indices:
         return set()
-    base = beacon_api_url.rstrip("/")
-    async with httpx.AsyncClient(timeout=12.0) as client:
+    base = normalize_rpc_url(beacon_api_url)
+    async with async_rpc_client(timeout=12.0) as client:
         res = await client.post(
             f"{base}/eth/v1/validator/duties/sync/{epoch}",
             json=[str(i) for i in validator_indices],
@@ -233,8 +238,8 @@ async def fetch_sync_committee_rewards(
     """POST signed per-validator sync-committee rewards for a block slot."""
     if not validator_indices:
         return {}
-    base = beacon_api_url.rstrip("/")
-    async with httpx.AsyncClient(timeout=12.0) as client:
+    base = normalize_rpc_url(beacon_api_url)
+    async with async_rpc_client(timeout=12.0) as client:
         res = await client.post(
             f"{base}/eth/v1/beacon/rewards/sync_committee/{slot}",
             json=[str(i) for i in validator_indices],
@@ -260,8 +265,8 @@ async def check_block_at_slot(beacon_api_url: str, slot: int) -> bool | None:
     Uses Beacon API GET /eth/v2/beacon/blocks/{slot} (404 ⇒ missed once the
     slot is in the past).
     """
-    base = beacon_api_url.rstrip("/")
-    async with httpx.AsyncClient(timeout=8.0) as client:
+    base = normalize_rpc_url(beacon_api_url)
+    async with async_rpc_client(timeout=8.0) as client:
         res = await client.get(f"{base}/eth/v2/beacon/blocks/{slot}")
         if res.status_code == 404:
             return False

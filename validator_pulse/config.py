@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     poll_interval_seconds: int = 12
     demo_mode: bool = True
 
+    # Shared RPC HTTP(S) / TLS policy (Beacon, Substrate, future adapters)
+    rpc_tls_verify: bool = True
+    rpc_tls_ca_bundle: str | None = None
+    rpc_tls_insecure: bool = False
+    rpc_connect_timeout_seconds: float = 8.0
+
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
     slack_webhook_url: str | None = None
@@ -78,7 +84,7 @@ class Settings(BaseSettings):
             return None
         return value
 
-    @field_validator("reward_token_symbol", mode="before")
+    @field_validator("reward_token_symbol", "rpc_tls_ca_bundle", mode="before")
     @classmethod
     def _empty_optional_str(cls, value: Any) -> Any:
         if value is None:

@@ -11,6 +11,11 @@ from validator_pulse.chains.polkadot.demo import (
 from validator_pulse.chains.polkadot.rpc import collect_substrate_consensus
 from validator_pulse.chains.polkadot.tokens import resolve_reward_token
 from validator_pulse.config import Settings
+from validator_pulse.http_client import (
+    RpcHttpConfig,
+    bind_rpc_http_config,
+    reset_rpc_http_config,
+)
 from validator_pulse.models import (
     AttestationStats,
     ConsensusHealth,
@@ -146,41 +151,45 @@ class PolkadotAdapter:
         infrastructure: InfrastructureHealth,
     ) -> ChainCollection:
         assert settings.substrate_rpc_url
-        consensus = await collect_substrate_consensus(settings.substrate_rpc_url)
-        if self.role == "validator":
-            addresses = settings.validator_stash_address_list()
-            missing_msg = "No VALIDATOR_STASH_ADDRESSES configured"
-            builders = self._live_relay_validator_stats
-        else:
-            addresses = settings.collator_address_list()
-            missing_msg = "No COLLATOR_ADDRESSES configured"
-            builders = self._live_collator_stats
+        token = bind_rpc_http_config(RpcHttpConfig.from_settings(settings))
+        try:
+            consensus = await collect_substrate_consensus(settings.substrate_rpc_url)
+            if self.role == "validator":
+                addresses = settings.validator_stash_address_list()
+                missing_msg = "No VALIDATOR_STASH_ADDRESSES configured"
+                builders = self._live_relay_validator_stats
+            else:
+                addresses = settings.collator_address_list()
+                missing_msg = "No COLLATOR_ADDRESSES configured"
+                builders = self._live_collator_stats
 
-        if not addresses:
-            err = missing_msg
-            if consensus.last_error:
-                err = f"{missing_msg}; {consensus.last_error}"
-            consensus = consensus.model_copy(
-                update={
-                    "status": "degraded" if consensus.status == "healthy" else consensus.status,
-                    "last_error": err,
-                }
-            )
+            if not addresses:
+                err = missing_msg
+                if consensus.last_error:
+                    err = f"{missing_msg}; {consensus.last_error}"
+                consensus = consensus.model_copy(
+                    update={
+                        "status": "degraded" if consensus.status == "healthy" else consensus.status,
+                        "last_error": err,
+                    }
+                )
+                return ChainCollection(
+                    consensus=consensus,
+                    operators=[],
+                    infrastructure=infrastructure,
+                )
+
+            operators = [
+                builders(i, address, consensus, infrastructure, settings)
+                for i, address in enumerate(addresses)
+            ]
             return ChainCollection(
                 consensus=consensus,
-                operators=[],
+                operators=operators,
                 infrastructure=infrastructure,
             )
-
-        operators = [
-            builders(i, address, consensus, infrastructure, settings)
-            for i, address in enumerate(addresses)
-        ]
-        return ChainCollection(
-            consensus=consensus,
-            operators=operators,
-            infrastructure=infrastructure,
-        )
+        finally:
+            reset_rpc_http_config(token)
 
     def _live_collator_stats(
         self,
