@@ -213,8 +213,8 @@ Prefer the `operator_*` series for new scrapes; legacy names remain so existing 
 Auth is **optional** (off when unset) so local demos stay frictionless. Set both username and password to protect the dashboard and APIs with HTTP Basic Auth:
 
 ```env
-WEB_AUTH_USERNAME=admin
-WEB_AUTH_PASSWORD=change-me
+WEB_AUTH_USERNAME=<username>
+WEB_AUTH_PASSWORD=<password>
 ```
 
 When enabled, unauthenticated requests to `/`, `/api/status`, `/api/collect`, `/api/alerts/test`, and `/api/metrics` return `401` with a `WWW-Authenticate` challenge (browsers show a login prompt).
@@ -234,7 +234,7 @@ scrape_configs:
     authorization:
       type: Bearer
       credentials: scrape-token-here
-    # or: basic_auth: { username: admin, password: change-me }
+    # or: basic_auth: { username: <username>, password: <password> }
 ```
 
 `WEB_METRICS_TOKEN` is accepted as `Authorization: Bearer …`, `X-Metrics-Token`, or `?token=…` on `/api/metrics` only — it does not unlock the dashboard. If the app binds off loopback without credentials, startup logs a warning.
