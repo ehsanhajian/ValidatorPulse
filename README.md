@@ -34,7 +34,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `CHAIN` | Status | Notes |
 | --- | --- | --- |
 | `ethereum` | Implemented | Beacon validators (index / BLS pubkey) |
-| `polkadot` | Implemented | Parachain collators (SS58); relay validators tracked in [#11](https://github.com/ehsanhajian/ValidatorPulse/issues/11) |
+| `polkadot` | Implemented | Parachain collators (`POLKADOT_ROLE=collator`) and relay validators (`POLKADOT_ROLE=validator` or `CHAIN=polkadot-relay`) |
 | `cosmos` | Planned | [#5](https://github.com/ehsanhajian/ValidatorPulse/issues/5) (includes Celestia via Bech32 profiles) |
 | `solana` | Planned | [#6](https://github.com/ehsanhajian/ValidatorPulse/issues/6) |
 | `near` | Planned | [#23](https://github.com/ehsanhajian/ValidatorPulse/issues/23) |
@@ -78,7 +78,16 @@ Live mode tracks attestation and proposal duties across polls. Rolling rewards u
 
 **Display names** (fail-soft, cached ~1h): beaconcha.in → Rated operator/pool mapping (`RATED_API_KEY`) → ENS on the withdrawal address (`ENS_LOOKUP_ENABLED=true`) → recent proposal graffiti → index/pubkey fallback. Set `FETCH_OPERATOR_NAMES=false` to disable lookups.
 
-### Polkadot / parachain collators
+### Polkadot
+
+Polkadot supports two operator roles under `CHAIN=polkadot` (or `CHAIN=polkadot-relay` for validators):
+
+| Role | Env | Node | Identifiers |
+| --- | --- | --- | --- |
+| Parachain **collator** | `POLKADOT_ROLE=collator` (default) | Parachain / collator RPC | `COLLATOR_ADDRESSES` |
+| Relay **validator** (NPoS) | `POLKADOT_ROLE=validator` | Relay-chain RPC | `VALIDATOR_STASH_ADDRESSES` |
+
+#### Parachain collators
 
 ![Polkadot collator dashboard (demo mode, Astar / ASTR)](docs/images/dashboard-polkadot.png)
 
@@ -91,6 +100,7 @@ Live mode tracks attestation and proposal duties across polls. Rolling rewards u
 
 ```env
 CHAIN=polkadot
+POLKADOT_ROLE=collator
 DEMO_MODE=false
 SUBSTRATE_RPC_URL=http://127.0.0.1:9933
 COLLATOR_ADDRESSES=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
@@ -110,6 +120,29 @@ PARACHAIN_ID=2006
 | 2046 | Manta | MANTA |
 | 2007 | Shiden | SDN |
 | 2023 | Moonriver | MOVR |
+
+#### Relay validators
+
+Relay validators participate in BABE/GRANDPA and can be slashed. Monitoring uses era points + block production, `risk_kind=slashing`, and alerts for offline / low era points / sync.
+
+```env
+CHAIN=polkadot
+POLKADOT_ROLE=validator
+DEMO_MODE=false
+SUBSTRATE_RPC_URL=http://127.0.0.1:9933
+VALIDATOR_STASH_ADDRESSES=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+```
+
+Equivalent shortcut:
+
+```env
+CHAIN=polkadot-relay
+DEMO_MODE=false
+SUBSTRATE_RPC_URL=http://127.0.0.1:9933
+VALIDATOR_STASH_ADDRESSES=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+```
+
+`PARACHAIN_ID` is ignored for relay role (DOT unless you override the token). Live mode currently derives a conservative duty window from relay-node sync/peers/reachability until full staking-storage decoding lands; demo mode simulates era points and blocks without a node.
 
 ### Add a chain plugin
 
@@ -161,11 +194,14 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, …) | `ethereum` |
+| `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP API | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
-| `SUBSTRATE_RPC_URL` / `COLLATOR_ADDRESSES` | Polkadot collators | unset / empty |
-| `PARACHAIN_ID` | Token lookup + labeling | unset (DOT) |
+| `SUBSTRATE_RPC_URL` | Polkadot Substrate HTTP RPC | unset |
+| `COLLATOR_ADDRESSES` | Parachain collator SS58 list | empty |
+| `VALIDATOR_STASH_ADDRESSES` | Relay validator stash SS58 list | empty |
+| `PARACHAIN_ID` | Collator token lookup + labeling | unset (DOT) |
 | `REWARD_TOKEN_SYMBOL` / `REWARD_TOKEN_DECIMALS` | Token overrides | unset |
 | `FETCH_OPERATOR_NAMES` | Optional name enrichment | `true` |
 | `SUBSCAN_API_KEY` | Subscan (Polkadot names) | unset |
@@ -178,6 +214,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `ALERT_MISSED_ATTESTATIONS` | Alert if missed primary duties ≥ N | `2` |
 | `ALERT_EFFECTIVENESS_BELOW` | Alert if effectiveness &lt; N% | `95` |
 | `ALERT_SLASHING_RISK_ABOVE` | Alert if risk score ≥ N | `40` |
+| `ALERT_LOW_ERA_POINTS_BELOW` | Relay: alert if era points &lt; N | `40` |
 | `ALERT_DISK_USAGE_ABOVE` / `ALERT_CLOCK_DRIFT_MS` | Host thresholds | `85` / `500` |
 
 ## Alerting

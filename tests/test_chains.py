@@ -24,6 +24,16 @@ def test_polkadot_adapter_is_registered() -> None:
     assert "polkadot" in list_implemented_chains()
 
 
+def test_polkadot_relay_alias_resolves() -> None:
+    from validator_pulse.config import Settings
+
+    adapter = get_adapter("polkadot-relay")
+    assert adapter.name == "polkadot"
+    adapter.configure(Settings(chain="polkadot-relay"))
+    assert adapter.operator_label == "validator"
+    assert adapter.risk_kind == "slashing"
+
+
 def test_unimplemented_chain_has_clear_error() -> None:
     with pytest.raises(UnsupportedChainError, match="issues/5"):
         get_adapter("cosmos")

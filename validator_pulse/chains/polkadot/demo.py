@@ -195,6 +195,172 @@ def build_demo_collators(
     return operators
 
 
+def build_demo_relay_consensus(now: float | None = None) -> ConsensusHealth:
+    now_s = now or time.time()
+    block = int(now_s // 6)  # ~6s relay block time
+    return ConsensusHealth(
+        beacon_reachable=True,
+        syncing=False,
+        sync_distance=0,
+        head_slot=block,
+        finalized_epoch=max(0, block - 2),
+        justified_epoch=block,
+        peer_count=80,
+        connected_peers=75,
+        status="healthy",
+    )
+
+
+def build_demo_relay_validators(
+    stash_addresses: list[str],
+    consensus: ConsensusHealth,
+    infrastructure: InfrastructureHealth,
+    *,
+    token_decimals: int = 10,
+    now: float | None = None,
+) -> list[ValidatorStats]:
+    """Demo relay validators — era points map to primary duty, BABE blocks to secondary."""
+    now_s = now or time.time()
+    head = consensus.head_slot
+    operators: list[ValidatorStats] = []
+    unit = 10 ** max(token_decimals, 0)
+
+    for i, address in enumerate(stash_addresses):
+        seed = sum(ord(c) for c in address) + i
+        miss_bias = 0.02 if i == 0 else 0.005 + i * 0.002
+        expected_points = 100
+        expected_blocks = 3 if i == 0 else 1
+
+        successful = missed = late = consecutive_missed = rewards = 0
+        recent_heartbeats: list[AttestationDuty] = []
+
+        for r in range(expected_points):
+            roll = _seeded_noise(seed, head - r + int(now_s // 86_400))
+            outcome = _pick_outcome(roll, miss_bias)
+            if outcome == "success":
+                successful += 1
+                consecutive_missed = 0
+                reward = int(unit * (0.00008 + roll * 0.00002))
+                rewards += reward
+                delay = 1
+            elif outcome == "late":
+                late += 1
+                consecutive_missed = 0
+                reward = int(unit * 0.00004)
+                rewards += reward
+                delay = 2
+            else:
+                missed += 1
+                consecutive_missed += 1
+                reward = 0
+                delay = None
+
+            if r < 8:
+                recent_heartbeats.append(
+                    AttestationDuty(
+                        epoch=max(0, (head - r) // 600),
+                        slot=max(0, head - r),
+                        validator_index=i,
+                        outcome=outcome,
+                        inclusion_delay=delay,
+                        reward_gwei=reward,
+                    )
+                )
+
+        prop_roll = _seeded_noise(seed, head)
+        blocks_successful = max(0, expected_blocks - (1 if prop_roll < 0.1 else 0))
+        blocks_missed = expected_blocks - blocks_successful
+        if blocks_successful:
+            rewards += blocks_successful * int(unit * 0.02)
+
+        recent_proposals = [
+            ProposalDuty(
+                epoch=max(0, head // 600),
+                slot=max(0, head - j),
+                validator_index=i,
+                outcome="success" if j < blocks_successful else "missed",
+                reward_gwei=int(unit * 0.02) if j < blocks_successful else 0,
+            )
+            for j in range(expected_blocks)
+        ]
+
+        effectiveness = compute_effectiveness_score(
+            attestations_expected=expected_points,
+            attestations_successful=successful,
+            attestations_late=late,
+            proposals_expected=expected_blocks,
+            proposals_successful=blocks_successful,
+        )
+        risk = compute_slashing_risk_score(
+            consecutive_missed_attestations=consecutive_missed,
+            missed_proposals=blocks_missed,
+            clock_drift_ms=infrastructure.clock_drift_ms,
+            syncing=consensus.syncing,
+            peer_count=consensus.connected_peers,
+            effectiveness_score=effectiveness,
+        )
+
+        # Second demo validator is offline-ish to exercise alerts.
+        status = "active_validator"
+        protocol_events = []
+        if i == 1 and len(stash_addresses) > 1:
+            status = "offline"
+            risk = max(risk, 72.0)
+            protocol_events = []
+
+        base_balance = 100 * unit
+        operators.append(
+            ValidatorStats(
+                index=i,
+                operator_id=address,
+                operator_index=i,
+                pubkey=address,
+                status=status,
+                balance_base_units=base_balance + rewards,
+                effective_balance_base_units=base_balance,
+                attestations=AttestationStats(
+                    expected=expected_points,
+                    successful=successful,
+                    missed=missed,
+                    late=late,
+                ),
+                proposals=ProposalStats(
+                    expected=expected_blocks,
+                    successful=blocks_successful,
+                    missed=blocks_missed,
+                ),
+                duties=[
+                    DutyStats(
+                        category="round",
+                        label="Era points",
+                        expected=expected_points,
+                        successful=successful,
+                        missed=missed,
+                        late=late,
+                        weight=0.85,
+                    ),
+                    DutyStats(
+                        category="block",
+                        label="Blocks",
+                        expected=expected_blocks,
+                        successful=blocks_successful,
+                        missed=blocks_missed,
+                        weight=0.15 if expected_blocks else 0.0,
+                    ),
+                ],
+                rewards_base_units=rewards,
+                effectiveness_score=effectiveness,
+                risk_score=risk,
+                risk_kind="slashing",
+                protocol_events=protocol_events,
+                recent_attestations=recent_heartbeats,
+                recent_proposals=recent_proposals,
+            )
+        )
+
+    return operators
+
+
 def apply_demo_infrastructure(
     base: InfrastructureHealth,
 ) -> InfrastructureHealth:
