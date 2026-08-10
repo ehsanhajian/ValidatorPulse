@@ -12,6 +12,7 @@ from validator_pulse.config import Settings
 from validator_pulse.models import (
     AttestationStats,
     ConsensusHealth,
+    DutyStats,
     InfrastructureHealth,
     ProposalStats,
     ValidatorStats,
@@ -31,6 +32,12 @@ class PolkadotAdapter:
     name = "polkadot"
     display_name = "Polkadot"
     operator_label = "collator"
+    risk_kind = "operational"
+    risk_label = "Downtime risk"
+    primary_duty_label = "Collations"
+    secondary_duty_label = "Blocks"
+    missed_duty_label = "Missed collations"
+    consensus_node_label = "Substrate node"
 
     def is_demo(self, settings: Settings) -> bool:
         if settings.demo_mode:
@@ -159,10 +166,12 @@ class PolkadotAdapter:
 
         return ValidatorStats(
             index=index,
+            operator_id=address,
+            operator_index=index,
             pubkey=address,
             status=status,
-            balance_gwei=0,
-            effective_balance_gwei=0,
+            balance_base_units=0,
+            effective_balance_base_units=0,
             attestations=AttestationStats(
                 expected=expected_rounds,
                 successful=successful,
@@ -174,9 +183,29 @@ class PolkadotAdapter:
                 successful=blocks_ok,
                 missed=blocks_missed,
             ),
-            rewards_gwei=0,
+            duties=[
+                DutyStats(
+                    category="collation",
+                    label="Collations",
+                    expected=expected_rounds,
+                    successful=successful,
+                    missed=missed,
+                    late=late,
+                    weight=0.85,
+                ),
+                DutyStats(
+                    category="block",
+                    label="Blocks",
+                    expected=expected_blocks,
+                    successful=blocks_ok,
+                    missed=blocks_missed,
+                    weight=0.15 if expected_blocks else 0.0,
+                ),
+            ],
+            rewards_base_units=0,
             effectiveness_score=effectiveness,
-            slashing_risk_score=risk,
+            risk_score=risk,
+            risk_kind="operational",
         )
 
 

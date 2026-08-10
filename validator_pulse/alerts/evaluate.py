@@ -27,28 +27,41 @@ def configured_channels(settings: Settings) -> list[AlertChannelName]:
     return channels
 
 
+def _labels_from_partial(snapshot: PulseSnapshot | dict) -> tuple[str, str, str, str]:
+    if isinstance(snapshot, PulseSnapshot):
+        operator = snapshot.operator_label or "validator"
+        primary = (snapshot.primary_duty_label or "duties").lower()
+        risk = (snapshot.risk_label or "Risk").lower()
+        missed = (snapshot.missed_duty_label or f"Missed {primary}").lower()
+        return operator, primary, risk, missed
+
+    operator = snapshot.get("operator_label") or "validator"
+    primary = (snapshot.get("primary_duty_label") or "duties").lower()
+    risk = (snapshot.get("risk_label") or "risk").lower()
+    missed = (snapshot.get("missed_duty_label") or f"Missed {primary}").lower()
+    return operator, primary, risk, missed
+
+
 def build_verdict(snapshot: PulseSnapshot | dict) -> Verdict:
     if isinstance(snapshot, PulseSnapshot):
         consensus_status = snapshot.consensus.status
         infra_status = snapshot.infrastructure.status
         validators = snapshot.validators
         metrics = snapshot.metrics
-        operator = snapshot.operator_label or "validator"
     else:
         consensus_status = snapshot["consensus"].status
         infra_status = snapshot["infrastructure"].status
         validators = snapshot["validators"]
         metrics = snapshot["metrics"]
-        operator = snapshot.get("operator_label") or "validator"
 
-    duty_word = "collations" if operator == "collator" else "attestations"
-    risk_word = "downtime risk" if operator == "collator" else "slashing risk"
+    operator, duty_word, risk_word, _missed_label = _labels_from_partial(snapshot)
 
     statuses: list[HealthStatus] = [consensus_status, infra_status]
     for v in validators:
-        if v.slashing_risk_score >= 60 or v.effectiveness_score < 80:
+        risk_score = v.risk_score if v.risk_score is not None else v.slashing_risk_score
+        if risk_score >= 60 or v.effectiveness_score < 80:
             statuses.append("critical")
-        elif v.slashing_risk_score >= 30 or v.effectiveness_score < 95:
+        elif risk_score >= 30 or v.effectiveness_score < 95:
             statuses.append("degraded")
         else:
             statuses.append("healthy")
@@ -62,9 +75,21 @@ def build_verdict(snapshot: PulseSnapshot | dict) -> Verdict:
     else:
         status = "healthy"
 
-    missed = metrics.validator_missed_attestations_total
-    effectiveness = metrics.validator_effectiveness_score
-    risk = metrics.validator_slashing_risk_score
+    missed = (
+        metrics.missed_primary_duties_total
+        if metrics.missed_primary_duties_total is not None
+        else metrics.validator_missed_attestations_total
+    )
+    effectiveness = (
+        metrics.effectiveness_score
+        if metrics.effectiveness_score is not None
+        else metrics.validator_effectiveness_score
+    )
+    risk = (
+        metrics.risk_score
+        if metrics.risk_score is not None
+        else metrics.validator_slashing_risk_score
+    )
 
     if status == "healthy":
         return Verdict(
@@ -100,20 +125,22 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
     now = datetime.now(timezone.utc).isoformat()
     alerts: list[AlertEvent] = []
     operator = snapshot.operator_label or "validator"
-    duty_word = "collations" if operator == "collator" else "attestations"
-    risk_word = "downtime risk" if operator == "collator" else "slashing risk"
-    node_label = "Substrate node" if snapshot.chain == "polkadot" else "Beacon node"
+    duty_word = (snapshot.primary_duty_label or "duties").lower()
+    risk_word = (snapshot.risk_label or "Risk").lower()
+    node_label = snapshot.consensus_node_label or "Consensus node"
 
     for v in snapshot.validators:
-        label = v.pubkey or str(v.index)
-        if v.attestations.missed >= settings.alert_missed_attestations:
+        label = v.operator_id or v.pubkey or str(v.index)
+        missed = v.attestations.missed
+        risk_score = v.risk_score if v.risk_score is not None else v.slashing_risk_score
+        if missed >= settings.alert_missed_attestations:
             alerts.append(
                 AlertEvent(
-                    id=f"missed-duty-{v.index}-{now}",
+                    id=f"missed-duty-{label}-{now}",
                     severity="warning",
                     title=f"Missed {duty_word} on {operator} {label}",
                     message=(
-                        f"{v.attestations.missed} missed {duty_word} in the current "
+                        f"{missed} missed {duty_word} in the current "
                         f"window (threshold {settings.alert_missed_attestations})."
                     ),
                     source="validator",
@@ -124,7 +151,7 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
         if v.effectiveness_score < settings.alert_effectiveness_below:
             alerts.append(
                 AlertEvent(
-                    id=f"eff-{v.index}-{now}",
+                    id=f"eff-{label}-{now}",
                     severity="warning",
                     title=f"Low effectiveness on {operator} {label}",
                     message=(
@@ -136,14 +163,14 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                     channels=channels,
                 )
             )
-        if v.slashing_risk_score >= settings.alert_slashing_risk_above:
+        if risk_score >= settings.alert_slashing_risk_above:
             alerts.append(
                 AlertEvent(
-                    id=f"risk-{v.index}-{now}",
+                    id=f"risk-{label}-{now}",
                     severity="critical",
                     title=f"Elevated {risk_word} on {operator} {label}",
                     message=(
-                        f"Risk score {v.slashing_risk_score} exceeds "
+                        f"Risk score {risk_score} exceeds "
                         f"threshold {settings.alert_slashing_risk_above}."
                     ),
                     source="validator",

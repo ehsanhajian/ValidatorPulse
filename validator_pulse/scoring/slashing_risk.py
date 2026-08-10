@@ -3,17 +3,33 @@ from __future__ import annotations
 
 def compute_slashing_risk_score(
     *,
-    consecutive_missed_attestations: int,
-    missed_proposals: int,
+    consecutive_missed_attestations: int = 0,
+    consecutive_missed_primary_duties: int | None = None,
+    missed_proposals: int = 0,
+    missed_secondary_duties: int | None = None,
     clock_drift_ms: float,
     syncing: bool,
     peer_count: int,
     effectiveness_score: float,
 ) -> float:
-    """0–100 risk score. Does not scan external security surfaces."""
+    """0–100 operational/penalty risk score. Does not scan external security surfaces.
+
+    Parameter names keep Eth attestation/proposal aliases; prefer
+    ``consecutive_missed_primary_duties`` / ``missed_secondary_duties`` for
+    heterogeneous chains.
+    """
+    missed_primary = (
+        consecutive_missed_attestations
+        if consecutive_missed_primary_duties is None
+        else consecutive_missed_primary_duties
+    )
+    missed_secondary = (
+        missed_proposals if missed_secondary_duties is None else missed_secondary_duties
+    )
+
     risk = 0.0
-    risk += min(35.0, consecutive_missed_attestations * 8)
-    risk += min(20.0, missed_proposals * 10)
+    risk += min(35.0, missed_primary * 8)
+    risk += min(20.0, missed_secondary * 10)
 
     if clock_drift_ms > 1000:
         risk += 30
