@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 3000
 
+    # Optional web panel / API credentials (both required to enable auth)
+    web_auth_username: str | None = None
+    web_auth_password: str | None = None
+    # Optional dedicated token for GET /api/metrics (Bearer / X-Metrics-Token / ?token=)
+    web_metrics_token: str | None = None
+
     @field_validator("parachain_id", "reward_token_decimals", mode="before")
     @classmethod
     def _empty_optional_int(cls, value: Any) -> Any:
@@ -84,7 +90,14 @@ class Settings(BaseSettings):
             return None
         return value
 
-    @field_validator("reward_token_symbol", "rpc_tls_ca_bundle", mode="before")
+    @field_validator(
+        "reward_token_symbol",
+        "rpc_tls_ca_bundle",
+        "web_auth_username",
+        "web_auth_password",
+        "web_metrics_token",
+        mode="before",
+    )
     @classmethod
     def _empty_optional_str(cls, value: Any) -> Any:
         if value is None:
