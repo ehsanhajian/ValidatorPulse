@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from validator_pulse.alerts import configured_channels, dispatch_alert
+from validator_pulse.auth import WebAuthMiddleware
 from validator_pulse.chains import UnsupportedChainError
 from validator_pulse.config import get_settings
 from validator_pulse.metrics import to_prometheus
@@ -24,6 +25,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
+app.add_middleware(WebAuthMiddleware)
 app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
 
 

@@ -208,6 +208,37 @@ Prometheus dual-emits:
 
 Prefer the `operator_*` series for new scrapes; legacy names remain so existing dashboards do not break abruptly.
 
+## Web panel authentication
+
+Auth is **optional** (off when unset) so local demos stay frictionless. Set both username and password to protect the dashboard and APIs with HTTP Basic Auth:
+
+```env
+WEB_AUTH_USERNAME=admin
+WEB_AUTH_PASSWORD=change-me
+```
+
+When enabled, unauthenticated requests to `/`, `/api/status`, `/api/collect`, `/api/alerts/test`, and `/api/metrics` return `401` with a `WWW-Authenticate` challenge (browsers show a login prompt).
+
+For Prometheus, either scrape with Basic auth or set a dedicated metrics token:
+
+```env
+WEB_METRICS_TOKEN=scrape-token-here
+```
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: validatorpulse
+    static_configs:
+      - targets: ["127.0.0.1:3000"]
+    authorization:
+      type: Bearer
+      credentials: scrape-token-here
+    # or: basic_auth: { username: admin, password: change-me }
+```
+
+`WEB_METRICS_TOKEN` is accepted as `Authorization: Bearer …`, `X-Metrics-Token`, or `?token=…` on `/api/metrics` only — it does not unlock the dashboard. If the app binds off loopback without credentials, startup logs a warning.
+
 ## Configuration reference
 
 Restart after changing `.env.local` (or use reload via `python -m validator_pulse`).
@@ -235,6 +266,8 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `DEMO_MODE` | Simulated duties | `true` |
 | `POLL_INTERVAL_SECONDS` | Cache window | `12` |
 | `HOST` / `PORT` | Bind address | `127.0.0.1` / `3000` |
+| `WEB_AUTH_USERNAME` / `WEB_AUTH_PASSWORD` | HTTP Basic auth for panel + APIs (both required) | unset (open) |
+| `WEB_METRICS_TOKEN` | Optional Bearer token for `/api/metrics` scrapes | unset |
 | `ALERT_MISSED_ATTESTATIONS` | Alert if missed primary duties ≥ N | `2` |
 | `ALERT_EFFECTIVENESS_BELOW` | Alert if effectiveness &lt; N% | `95` |
 | `ALERT_SLASHING_RISK_ABOVE` | Alert if risk score ≥ N | `40` |
