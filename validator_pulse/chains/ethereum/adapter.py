@@ -16,6 +16,11 @@ from validator_pulse.collectors.demo import (
     build_demo_validators,
 )
 from validator_pulse.config import Settings
+from validator_pulse.http_client import (
+    RpcHttpConfig,
+    bind_rpc_http_config,
+    reset_rpc_http_config,
+)
 from validator_pulse.models import (
     AttestationStats,
     ConsensusHealth,
@@ -75,27 +80,31 @@ class EthereumAdapter:
         infrastructure: InfrastructureHealth,
     ) -> ChainCollection:
         assert settings.beacon_api_url
-        consensus = await collect_consensus(settings.beacon_api_url)
+        token = bind_rpc_http_config(RpcHttpConfig.from_settings(settings))
         try:
-            operators = await self._live_validators(
-                settings.beacon_api_url,
-                settings.validator_ids(),
-                consensus,
-                infrastructure,
+            consensus = await collect_consensus(settings.beacon_api_url)
+            try:
+                operators = await self._live_validators(
+                    settings.beacon_api_url,
+                    settings.validator_ids(),
+                    consensus,
+                    infrastructure,
+                )
+            except Exception as exc:  # noqa: BLE001
+                operators = []
+                consensus = consensus.model_copy(
+                    update={
+                        "status": "critical",
+                        "last_error": consensus.last_error or str(exc),
+                    }
+                )
+            return ChainCollection(
+                consensus=consensus,
+                operators=operators,
+                infrastructure=infrastructure,
             )
-        except Exception as exc:  # noqa: BLE001
-            operators = []
-            consensus = consensus.model_copy(
-                update={
-                    "status": "critical",
-                    "last_error": consensus.last_error or str(exc),
-                }
-            )
-        return ChainCollection(
-            consensus=consensus,
-            operators=operators,
-            infrastructure=infrastructure,
-        )
+        finally:
+            reset_rpc_http_config(token)
 
     async def _live_validators(
         self,

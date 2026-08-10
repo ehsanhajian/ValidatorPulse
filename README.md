@@ -56,6 +56,24 @@ Shared models were generalized for heterogeneous L1s in [#35](https://github.com
 CHAIN=ethereum
 ```
 
+### RPC URLs, HTTPS, and TLS
+
+Beacon and Substrate (and future adapters) share one HTTP(S) client:
+
+- Full URLs with `http://` or `https://`, **any port**, and optional path prefixes
+- TLS certificate verification **on** by default for `https://`
+- Optional private CA (`RPC_TLS_CA_BUNDLE`) or lab-only skip (`RPC_TLS_INSECURE=true`)
+- Connectivity probe distinguishes **TLS** failures from connection refused / timeouts; the message lands in consensus `last_error`
+
+```env
+BEACON_API_URL=https://beacon.example.com:8443
+SUBSTRATE_RPC_URL=https://rpc.example.com
+RPC_TLS_VERIFY=true
+# RPC_TLS_CA_BUNDLE=/etc/ssl/certs/private-ca.pem
+# RPC_TLS_INSECURE=false
+RPC_CONNECT_TIMEOUT_SECONDS=8
+```
+
 ### Ethereum
 
 ![Ethereum dashboard (demo mode)](docs/images/dashboard-ethereum.png)
@@ -70,9 +88,11 @@ Validators are identified by **index** and/or **BLS pubkey**—not by an executi
 ```env
 CHAIN=ethereum
 DEMO_MODE=false
-BEACON_API_URL=http://127.0.0.1:5052
+BEACON_API_URL=https://beacon.example.com:8443
 VALIDATOR_INDICES=123456,789012
 ```
+
+Local plain HTTP still works: `BEACON_API_URL=http://127.0.0.1:5052`.
 
 Live mode tracks attestation and proposal duties across polls. Rolling rewards use signed Beacon consensus rewards (attestations, proposals, sync committee)—never `balance − effective_balance`. The UI marks the window **partial** while warming up. Execution tips and MEV are excluded. Demo mode simulates a full window without a beacon node.
 
@@ -196,11 +216,15 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | --- | --- | --- |
 | `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
-| `BEACON_API_URL` | Ethereum consensus HTTP API | unset |
+| `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
-| `SUBSTRATE_RPC_URL` | Polkadot Substrate HTTP RPC | unset |
+| `SUBSTRATE_RPC_URL` | Polkadot Substrate HTTP(S) RPC (any host/port) | unset |
 | `COLLATOR_ADDRESSES` | Parachain collator SS58 list | empty |
 | `VALIDATOR_STASH_ADDRESSES` | Relay validator stash SS58 list | empty |
+| `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
+| `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
+| `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |
+| `RPC_CONNECT_TIMEOUT_SECONDS` | RPC connect/read timeout | `8` |
 | `PARACHAIN_ID` | Collator token lookup + labeling | unset (DOT) |
 | `REWARD_TOKEN_SYMBOL` / `REWARD_TOKEN_DECIMALS` | Token overrides | unset |
 | `FETCH_OPERATOR_NAMES` | Optional name enrichment | `true` |

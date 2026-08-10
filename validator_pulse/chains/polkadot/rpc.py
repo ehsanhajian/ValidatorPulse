@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from validator_pulse.http_client import (
+    async_rpc_client,
+    format_transport_error,
+    normalize_rpc_url,
+    probe_rpc_endpoint,
+)
 from validator_pulse.models import ConsensusHealth, HealthStatus
 
 
@@ -25,7 +29,7 @@ async def substrate_rpc(
     method: str,
     params: list[Any] | None = None,
     *,
-    timeout: float = 8.0,
+    timeout: float | None = None,
 ) -> Any:
     payload = {
         "id": 1,
@@ -33,9 +37,10 @@ async def substrate_rpc(
         "method": method,
         "params": params or [],
     }
-    async with httpx.AsyncClient(timeout=timeout) as client:
+    url = normalize_rpc_url(rpc_url)
+    async with async_rpc_client(timeout=timeout) as client:
         res = await client.post(
-            rpc_url.rstrip("/"),
+            url,
             json=payload,
             headers={"Content-Type": "application/json"},
         )
@@ -59,8 +64,10 @@ def _consensus_status(*, reachable: bool, syncing: bool, peer_count: int) -> Hea
 
 
 async def collect_substrate_consensus(rpc_url: str) -> ConsensusHealth:
+    base = normalize_rpc_url(rpc_url)
     try:
-        health, sync_state, header = await _gather_node(rpc_url)
+        await probe_rpc_endpoint(base)
+        health, sync_state, header = await _gather_node(base)
         peers = int(health.get("peers") or 0)
         syncing = bool(health.get("isSyncing"))
         current = _as_int(sync_state.get("currentBlock"))
@@ -95,7 +102,7 @@ async def collect_substrate_consensus(rpc_url: str) -> ConsensusHealth:
             peer_count=0,
             connected_peers=0,
             status="critical",
-            last_error=str(exc),
+            last_error=format_transport_error(exc),
         )
 
 
