@@ -1,147 +1,10 @@
 # ValidatorPulse
 
-Keep blockchain validators healthy and prevent downtime and slashing.
+**Is my validator operating correctly?**
 
-**Core question:** *Is my validator operating correctly?*
+ValidatorPulse is a FastAPI service that answers that question with a live dashboard, Prometheus metrics, and multi-channel alerts. It watches operator duties, consensus health, and host infrastructure—so you catch downtime and penalties before they escalate.
 
-Python / FastAPI service with a live dashboard, Prometheus metrics, and multi-channel alerting.
-
-## What it monitors
-
-| Area | Signals |
-| --- | --- |
-| **Validator** | Attestations, block proposals, missed duties, rewards, effectiveness score, slashing risk |
-| **Consensus** | Beacon health, sync status, finality, peers |
-| **Infrastructure** | CPU, memory, disk usage & latency, network, clock drift |
-
-**Non-goal:** does **not** scan external security surfaces.
-
-## Chains & plugins
-
-ValidatorPulse uses a **chain adapter** plugin layout. Shared dashboard, alerts, metrics, and host infrastructure monitoring sit above adapters; each chain owns consensus + operator collection.
-
-| `CHAIN` | Status | Issue |
-| --- | --- | --- |
-| `ethereum` | Implemented | — |
-| `polkadot` | Implemented (collators) | [#4](https://github.com/ehsanhajian/ValidatorPulse/issues/4) |
-| `cosmos` | Planned | [#5](https://github.com/ehsanhajian/ValidatorPulse/issues/5) |
-| `solana` | Planned | [#6](https://github.com/ehsanhajian/ValidatorPulse/issues/6) |
-
-Set the active plugin in `.env.local`:
-
-```env
-CHAIN=ethereum
-```
-
-### Ethereum validators
-
-![Ethereum dashboard (demo mode)](docs/images/dashboard-ethereum.png)
-
-Edit **`.env.local`** (copy from `.env.example` if needed).
-
-Ethereum validators are identified by **index** and/or **BLS pubkey** — not by an execution wallet address (`0x` + 40 hex).
-
-| What you have | Env var | Example |
-| --- | --- | --- |
-| Validator index | `VALIDATOR_INDICES` | `123456,789012` |
-| Validator pubkey (“validator address”) | `VALIDATOR_PUBKEYS` | `0xabc…` (96 hex chars after `0x`) |
-
-```env
-CHAIN=ethereum
-DEMO_MODE=false
-BEACON_API_URL=http://127.0.0.1:5052
-VALIDATOR_INDICES=123456,789012
-```
-
-Live mode pulls attestation / proposal duties from the Beacon API and keeps them across poll cycles so missed/success counts and recent-duty lists update over epochs. Its in-process rolling rewards total uses signed consensus-layer attestation, proposal, and sync-committee rewards from the Beacon rewards APIs—never `balance − effective_balance`. The dashboard marks the window **partial** while it warms up or when a rewards endpoint is unavailable. Restarting the process starts a new window. Execution tips and MEV payments are outside this total. Demo mode still simulates a full duty window without a beacon node.
-
-### Polkadot / parachain collators
-
-![Polkadot collator dashboard (demo mode, Astar / ASTR)](docs/images/dashboard-polkadot.png)
-
-Collators use **SS58 addresses** and a Substrate HTTP JSON-RPC endpoint (usually your collator node).
-
-| What you have | Env var | Example |
-| --- | --- | --- |
-| Substrate RPC | `SUBSTRATE_RPC_URL` | `http://127.0.0.1:9933` |
-| Collator SS58 addresses | `COLLATOR_ADDRESSES` | `5Grw…,5FHn…` |
-| Parachain id (optional) | `PARACHAIN_ID` | `2006` (Astar → ASTR) |
-| Token symbol override | `REWARD_TOKEN_SYMBOL` | `ASTR` |
-| Token decimals override | `REWARD_TOKEN_DECIMALS` | `18` |
-
-```env
-CHAIN=polkadot
-DEMO_MODE=false
-SUBSTRATE_RPC_URL=http://127.0.0.1:9933
-COLLATOR_ADDRESSES=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
-PARACHAIN_ID=2006
-```
-
-Built-in `PARACHAIN_ID` → token mapping:
-
-| ID | Network | Token |
-| --- | --- | --- |
-| _(unset)_ | Polkadot (default) | DOT |
-| 1000 | Asset Hub | DOT |
-| 2000 | Acala | ACA |
-| 2004 | Moonbeam | GLMR |
-| 2006 | Astar | ASTR |
-| 2030 | Bifrost | BNC |
-| 2034 | Hydration | HDX |
-| 2035 | Phala | PHA |
-| 2046 | Manta | MANTA |
-| 2007 | Shiden | SDN |
-| 2023 | Moonriver | MOVR |
-
-If your parachain is **not** in that table, set `REWARD_TOKEN_SYMBOL` and `REWARD_TOKEN_DECIMALS`. Otherwise leave them unset.
-
-Demo mode (`DEMO_MODE=true` or unset RPC) simulates collation / block-production duties without a node.
-
-Selecting an unimplemented chain returns a clear configuration error (with a link to the tracking issue).
-
-### Add a chain plugin
-
-1. Create `validator_pulse/chains/<name>/adapter.py` implementing `ChainAdapter`
-2. Register it in `validator_pulse/chains/registry.py` via `register_adapter(...)`
-3. Add chain-specific settings to `Settings` / `.env.example`
-4. Keep infrastructure, alerting, and Prometheus export outside the adapter
-
-```python
-class ChainAdapter(Protocol):
-    name: str
-    display_name: str
-    operator_label: str  # "validator", "collator", ...
-
-    def is_demo(self, settings: Settings) -> bool: ...
-
-    async def collect(
-        self, settings: Settings, infrastructure: InfrastructureHealth
-    ) -> ChainCollection: ...
-```
-
-## Configuration tips
-
-Restart the app after changing `.env.local` (or rely on reload if already running with `python -m validator_pulse`).
-
-Where to find Ethereum identifiers:
-
-- **Index / pubkey:** [beaconcha.in](https://beaconcha.in), your validator client logs, or deposit-data JSON
-- **Beacon API URL:** consensus client HTTP API (Lighthouse/Teku/Nimbus/Prysm), often `http://127.0.0.1:5052`
-
-Ethereum display-name enrichment is layered and fail-soft:
-
-1. beaconcha.in validator name
-2. [Rated](https://docs.rated.network/rated-api/api-reference/v1/ethereum/metadata/get-pool-and-operator-mappings-for-validators) node-operator / DVT / pool mapping (requires `RATED_API_KEY`)
-3. ENS primary name for the execution withdrawal address (opt in with `ENS_LOOKUP_ENABLED=true`)
-4. graffiti from the validator's newest successful proposal available on the local Beacon API
-5. validator index/pubkey fallback
-
-Results (including misses) are cached in-process for one hour. Set `FETCH_OPERATOR_NAMES=false` to disable every lookup. beaconcha.in and Rated limits depend on the API plan. The default ENSWhois endpoint permits 5 unauthenticated requests per minute; set `ENS_API_KEY` for a higher allowance. ENS lookup is disabled by default so withdrawal addresses are not sent to that service unless explicitly enabled. Hovering a resolved label still shows the full validator pubkey.
-
-Where to find Polkadot collator identifiers:
-
-- **SS58 address:** collator account / session keys page on a parachain explorer
-- **Substrate RPC:** collator node HTTP RPC, often `http://127.0.0.1:9933`
+**Non-goal:** it does not scan external security surfaces.
 
 ## Quick start
 
@@ -154,43 +17,170 @@ cp .env.example .env.local
 python -m validator_pulse
 ```
 
-Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). With `DEMO_MODE=true` (default), the app simulates duty data so you can explore the UI without a node.
 
-With `DEMO_MODE=true` (default), the app simulates duty data so you can explore the UI without a beacon node.
+## What it monitors
+
+| Area | Signals |
+| --- | --- |
+| **Operator** | Chain-specific duties (attestations, collations, chunks, blocks, …), missed work, rewards, effectiveness, operational/penalty risk |
+| **Consensus** | Node reachability, sync distance, finality, peers |
+| **Infrastructure** | CPU, memory, disk usage & latency, network, clock drift |
+
+Adapters supply display labels (`risk_label`, duty names, consensus node name). Shared scoring, alerts, metrics, and the dashboard stay chain-agnostic.
+
+## Chains
+
+| `CHAIN` | Status | Notes |
+| --- | --- | --- |
+| `ethereum` | Implemented | Beacon validators (index / BLS pubkey) |
+| `polkadot` | Implemented | Parachain collators (SS58); relay validators tracked in [#11](https://github.com/ehsanhajian/ValidatorPulse/issues/11) |
+| `cosmos` | Planned | [#5](https://github.com/ehsanhajian/ValidatorPulse/issues/5) (includes Celestia via Bech32 profiles) |
+| `solana` | Planned | [#6](https://github.com/ehsanhajian/ValidatorPulse/issues/6) |
+| `near` | Planned | [#23](https://github.com/ehsanhajian/ValidatorPulse/issues/23) |
+| `cardano` | Planned | [#24](https://github.com/ehsanhajian/ValidatorPulse/issues/24) |
+| `tezos` | Planned | [#25](https://github.com/ehsanhajian/ValidatorPulse/issues/25) |
+| `algorand` | Planned | [#26](https://github.com/ehsanhajian/ValidatorPulse/issues/26) |
+| `bsc` | Planned | [#27](https://github.com/ehsanhajian/ValidatorPulse/issues/27) |
+| `aptos` | Planned | [#28](https://github.com/ehsanhajian/ValidatorPulse/issues/28) |
+| `sui` | Planned | [#29](https://github.com/ehsanhajian/ValidatorPulse/issues/29) |
+| `monad` | Planned | [#30](https://github.com/ehsanhajian/ValidatorPulse/issues/30) |
+| `avalanche` | Planned | [#31](https://github.com/ehsanhajian/ValidatorPulse/issues/31) |
+| `mina` | Planned | [#32](https://github.com/ehsanhajian/ValidatorPulse/issues/32) |
+| `multiversx` | Planned | [#33](https://github.com/ehsanhajian/ValidatorPulse/issues/33) |
+| `ton` | Planned | [#34](https://github.com/ehsanhajian/ValidatorPulse/issues/34) |
+
+Shared models were generalized for heterogeneous L1s in [#35](https://github.com/ehsanhajian/ValidatorPulse/issues/35). Packaging (Docker / Caddy) is tracked in [#9](https://github.com/ehsanhajian/ValidatorPulse/issues/9).
+
+```env
+CHAIN=ethereum
+```
+
+### Ethereum
+
+![Ethereum dashboard (demo mode)](docs/images/dashboard-ethereum.png)
+
+Validators are identified by **index** and/or **BLS pubkey**—not by an execution wallet (`0x` + 40 hex).
+
+| Identifier | Env var | Example |
+| --- | --- | --- |
+| Validator index | `VALIDATOR_INDICES` | `123456,789012` |
+| BLS pubkey | `VALIDATOR_PUBKEYS` | `0x` + 96 hex chars |
+
+```env
+CHAIN=ethereum
+DEMO_MODE=false
+BEACON_API_URL=http://127.0.0.1:5052
+VALIDATOR_INDICES=123456,789012
+```
+
+Live mode tracks attestation and proposal duties across polls. Rolling rewards use signed Beacon consensus rewards (attestations, proposals, sync committee)—never `balance − effective_balance`. The UI marks the window **partial** while warming up. Execution tips and MEV are excluded. Demo mode simulates a full window without a beacon node.
+
+**Display names** (fail-soft, cached ~1h): beaconcha.in → Rated operator/pool mapping (`RATED_API_KEY`) → ENS on the withdrawal address (`ENS_LOOKUP_ENABLED=true`) → recent proposal graffiti → index/pubkey fallback. Set `FETCH_OPERATOR_NAMES=false` to disable lookups.
+
+### Polkadot / parachain collators
+
+![Polkadot collator dashboard (demo mode, Astar / ASTR)](docs/images/dashboard-polkadot.png)
+
+| Identifier | Env var | Example |
+| --- | --- | --- |
+| Substrate HTTP RPC | `SUBSTRATE_RPC_URL` | `http://127.0.0.1:9933` |
+| Collator SS58 | `COLLATOR_ADDRESSES` | `5Grw…,5FHn…` |
+| Parachain id | `PARACHAIN_ID` | `2006` (Astar → ASTR) |
+| Token overrides | `REWARD_TOKEN_SYMBOL` / `REWARD_TOKEN_DECIMALS` | when not in the built-in map |
+
+```env
+CHAIN=polkadot
+DEMO_MODE=false
+SUBSTRATE_RPC_URL=http://127.0.0.1:9933
+COLLATOR_ADDRESSES=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+PARACHAIN_ID=2006
+```
+
+| `PARACHAIN_ID` | Network | Token |
+| --- | --- | --- |
+| _(unset)_ | Polkadot default | DOT |
+| 1000 | Asset Hub | DOT |
+| 2000 | Acala | ACA |
+| 2004 | Moonbeam | GLMR |
+| 2006 | Astar | ASTR |
+| 2030 | Bifrost | BNC |
+| 2034 | Hydration | HDX |
+| 2035 | Phala | PHA |
+| 2046 | Manta | MANTA |
+| 2007 | Shiden | SDN |
+| 2023 | Moonriver | MOVR |
+
+### Add a chain plugin
+
+1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
+2. Register it in `validator_pulse/chains/registry.py`
+3. Add settings to `Settings` / `.env.example`
+4. Keep infrastructure, alerting, and Prometheus outside the adapter
+
+```python
+class ChainAdapter(Protocol):
+    name: str
+    display_name: str
+    operator_label: str
+    risk_kind: str          # slashing | kickout | jail | … 
+    risk_label: str         # UI / alert wording
+    primary_duty_label: str
+    secondary_duty_label: str
+    missed_duty_label: str
+    consensus_node_label: str
+
+    def is_demo(self, settings: Settings) -> bool: ...
+    async def collect(...) -> ChainCollection: ...
+```
+
+## Operator model & API migration
+
+`GET /api/status` snapshots use `schema_version: 2`. Canonical fields:
+
+| Concept | Canonical | Compatibility aliases |
+| --- | --- | --- |
+| Identity | `operator_id` (string) | optional `operator_index` / legacy `index` |
+| Balances & rewards | `*_base_units` + token metadata on the snapshot | `*_gwei` (same integer; name is historical) |
+| Duties | `duties[]` with category + label | `attestations` / `proposals` |
+| Risk | `risk_score` + `risk_kind` | `slashing_risk_score` |
+| Protocol incidents | `protocol_events[]` | — |
+
+`OperatorStats` is an alias of `ValidatorStats`. Ethereum and Polkadot behavior is unchanged for existing clients that still read the aliases.
+
+Prometheus dual-emits:
+
+- **Legacy:** `validator_*`, `validator_balance_gwei`, `validator_rewards_gwei`, …
+- **Preferred:** `operator_*` with `chain` / `operator_id` (and `risk_kind` / token labels where relevant)
+
+Prefer the `operator_*` series for new scrapes; legacy names remain so existing dashboards do not break abruptly.
 
 ## Configuration reference
 
+Restart after changing `.env.local` (or use reload via `python -m validator_pulse`).
+
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active chain plugin (`ethereum`, `polkadot`, …) | `ethereum` |
-| `BEACON_API_URL` | Ethereum consensus client HTTP API | unset |
-| `VALIDATOR_INDICES` | Comma-separated indices | `1,2,3` (demo) |
-| `VALIDATOR_PUBKEYS` | Comma-separated BLS pubkeys | empty |
-| `SUBSTRATE_RPC_URL` | Polkadot/parachain Substrate HTTP RPC | unset |
-| `COLLATOR_ADDRESSES` | Comma-separated SS58 collator addresses | empty |
-| `PARACHAIN_ID` | Parachain id (token lookup + labeling) | unset (DOT) |
-| `REWARD_TOKEN_SYMBOL` | Override native token symbol | unset |
-| `REWARD_TOKEN_DECIMALS` | Override token decimals | unset |
-| `FETCH_OPERATOR_NAMES` | Enable all optional operator-name enrichment | `true` |
-| `SUBSCAN_API_KEY` | Optional Subscan API key | unset |
-| `BEACONCHA_BASE_URL` | Ethereum explorer API base | `https://beaconcha.in` |
-| `BEACONCHA_API_KEY` | Optional beaconcha.in bearer key | unset |
-| `RATED_API_KEY` | Rated operator-directory API key | unset |
-| `RATED_API_BASE_URL` / `RATED_NETWORK` | Rated endpoint / Ethereum network | `https://api.rated.network` / `mainnet` |
-| `ENS_LOOKUP_ENABLED` | Resolve withdrawal addresses to ENS primary names | `false` |
-| `ENS_API_KEY` / `ENS_API_BASE_URL` | Optional ENSWhois key / endpoint | unset / `https://api.enswhois.com` |
-| `DEMO_MODE` | Force demo data | `true` |
-| `POLL_INTERVAL_SECONDS` | Cache / refresh window | `12` |
+| `CHAIN` | Active adapter | `ethereum` |
+| `BEACON_API_URL` | Ethereum consensus HTTP API | unset |
+| `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
+| `SUBSTRATE_RPC_URL` / `COLLATOR_ADDRESSES` | Polkadot collators | unset / empty |
+| `PARACHAIN_ID` | Token lookup + labeling | unset (DOT) |
+| `REWARD_TOKEN_SYMBOL` / `REWARD_TOKEN_DECIMALS` | Token overrides | unset |
+| `FETCH_OPERATOR_NAMES` | Optional name enrichment | `true` |
+| `SUBSCAN_API_KEY` | Subscan (Polkadot names) | unset |
+| `BEACONCHA_BASE_URL` / `BEACONCHA_API_KEY` | beaconcha.in | `https://beaconcha.in` / unset |
+| `RATED_API_KEY` / `RATED_API_BASE_URL` / `RATED_NETWORK` | Rated operator directory | unset / Rated defaults |
+| `ENS_LOOKUP_ENABLED` / `ENS_API_KEY` / `ENS_API_BASE_URL` | ENS primary names | `false` / unset / ENSWhois |
+| `DEMO_MODE` | Simulated duties | `true` |
+| `POLL_INTERVAL_SECONDS` | Cache window | `12` |
 | `HOST` / `PORT` | Bind address | `127.0.0.1` / `3000` |
-| `ALERT_MISSED_ATTESTATIONS` | Alert if missed ≥ N | `2` |
+| `ALERT_MISSED_ATTESTATIONS` | Alert if missed primary duties ≥ N | `2` |
 | `ALERT_EFFECTIVENESS_BELOW` | Alert if effectiveness &lt; N% | `95` |
-| `ALERT_SLASHING_RISK_ABOVE` | Alert if risk ≥ N | `40` |
-| `ALERT_DISK_USAGE_ABOVE` | Alert if disk % ≥ N | `85` |
-| `ALERT_CLOCK_DRIFT_MS` | Alert if drift ≥ N ms | `500` |
+| `ALERT_SLASHING_RISK_ABOVE` | Alert if risk score ≥ N | `40` |
+| `ALERT_DISK_USAGE_ABOVE` / `ALERT_CLOCK_DRIFT_MS` | Host thresholds | `85` / `500` |
 
 ## Alerting
-
-Set any subset in `.env.local`:
 
 | Channel | Variables |
 | --- | --- |
@@ -204,24 +194,11 @@ Set any subset in `.env.local`:
 curl -X POST http://127.0.0.1:3000/api/alerts/test
 ```
 
-## Metrics
-
-Prometheus scrape:
+## Metrics & API
 
 ```text
 GET /api/metrics
 ```
-
-Core series:
-
-- `validator_effectiveness_score`
-- `validator_missed_attestations_total`
-- `validator_slashing_risk_score`
-- `validator_rewards_gwei` (rolling net consensus duty rewards)
-
-Also exports per-validator labels plus consensus/infra gauges.
-
-## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -233,8 +210,8 @@ Also exports per-validator labels plus consensus/infra gauges.
 
 ## Scoring
 
-- **Effectiveness (0–100):** weighted completion of attestations and proposals; late attestations get partial credit.
-- **Slashing risk (0–100):** rises with consecutive misses, missed proposals, clock drift, syncing, low peers, and low effectiveness.
+- **Effectiveness (0–100):** weighted completion of primary and secondary duties; late primary duties get partial credit.
+- **Risk (0–100):** rises with consecutive misses, missed secondary duties, clock drift, syncing, low peers, and low effectiveness. Adapters set `risk_kind` / `risk_label` (slashing, kickout, jail, downtime, …)—confirmed slash/jail/tombstone events use `protocol_events`.
 
 ## Tests
 

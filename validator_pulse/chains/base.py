@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from validator_pulse.config import Settings
-from validator_pulse.models import ConsensusHealth, InfrastructureHealth, ValidatorStats
+from validator_pulse.models import (
+    ConsensusHealth,
+    InfrastructureHealth,
+    RiskKind,
+    ValidatorStats,
+)
 
 
 class UnsupportedChainError(ValueError):
@@ -30,6 +35,12 @@ class ChainAdapter(Protocol):
     name: str
     display_name: str
     operator_label: str  # e.g. "validator", "collator"
+    risk_kind: RiskKind
+    risk_label: str
+    primary_duty_label: str
+    secondary_duty_label: str
+    missed_duty_label: str
+    consensus_node_label: str
 
     def is_demo(self, settings: Settings) -> bool:
         """Whether this adapter should run in demo mode for the given settings."""

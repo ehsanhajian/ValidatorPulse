@@ -174,6 +174,8 @@ def build_demo_validators(
         validators.append(
             ValidatorStats(
                 index=index,
+                operator_id=pubkey[:98],
+                operator_index=index,
                 pubkey=pubkey[:98],
                 status="active_ongoing",
                 balance_gwei=32_000_000_000 + rewards,
@@ -192,6 +194,7 @@ def build_demo_validators(
                 rewards_gwei=rewards,
                 effectiveness_score=effectiveness,
                 slashing_risk_score=slashing_risk,
+                risk_kind="slashing",
                 recent_attestations=recent_attestations[:8],
                 recent_proposals=recent_proposals,
             )

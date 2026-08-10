@@ -61,12 +61,26 @@ async def collect_pulse(
         symbol_override=settings.reward_token_symbol,
         decimals_override=settings.reward_token_decimals,
     )
+    risk_kind = getattr(adapter, "risk_kind", "slashing")
+    risk_label = getattr(adapter, "risk_label", "Slashing risk")
+    primary_duty_label = getattr(adapter, "primary_duty_label", "Attestations")
+    secondary_duty_label = getattr(adapter, "secondary_duty_label", "Proposals")
+    missed_duty_label = getattr(adapter, "missed_duty_label", "Missed attestations")
+    consensus_node_label = getattr(adapter, "consensus_node_label", "Beacon")
+
     partial = PulseSnapshot(
         collected_at=collected_at,
         demo_mode=demo_mode,
+        schema_version=2,
         chain=adapter.name,
         chain_display_name=adapter.display_name,
         operator_label=adapter.operator_label,
+        risk_kind=risk_kind,
+        risk_label=risk_label,
+        primary_duty_label=primary_duty_label,
+        secondary_duty_label=secondary_duty_label,
+        missed_duty_label=missed_duty_label,
+        consensus_node_label=consensus_node_label,
         parachain_id=settings.parachain_id,
         reward_token_symbol=token.symbol,
         reward_token_decimals=token.decimals,
@@ -78,6 +92,9 @@ async def collect_pulse(
                 "validators": validators,
                 "metrics": metrics,
                 "operator_label": adapter.operator_label,
+                "risk_label": risk_label,
+                "primary_duty_label": primary_duty_label,
+                "missed_duty_label": missed_duty_label,
             }
         ),
         validators=validators,

@@ -16,8 +16,8 @@
         <p class="eyebrow">Validator health</p>
         <h1>ValidatorPulse</h1>
         <p class="lede">
-          Keep validators healthy and prevent downtime and slashing. Answers one question:
-          is my validator operating correctly?
+          Keep operators healthy and catch downtime or penalties early. Answers one question:
+          is my {{ snapshot.operator_label }} operating correctly?
         </p>
       </div>
         <div class="actions">
@@ -52,19 +52,19 @@
       </div>
       <div class="metrics">
         <div class="metric">
-          <div class="metric-key">validator_effectiveness_score</div>
+          <div class="metric-key">operator_effectiveness_score</div>
           <div class="metric-value" id="m-effectiveness">{{ snapshot.metrics.validator_effectiveness_score }}<span>%</span></div>
           <div class="metric-label">Effectiveness</div>
         </div>
         <div class="metric">
-          <div class="metric-key">validator_missed_attestations_total</div>
+          <div class="metric-key">operator_missed_primary_duties_total</div>
           <div class="metric-value" id="m-missed">{{ snapshot.metrics.validator_missed_attestations_total }}</div>
-          <div class="metric-label">Missed attestations</div>
+          <div class="metric-label">{{ snapshot.missed_duty_label }}</div>
         </div>
         <div class="metric">
-          <div class="metric-key">validator_slashing_risk_score</div>
+          <div class="metric-key">operator_risk_score</div>
           <div class="metric-value" id="m-risk">{{ snapshot.metrics.validator_slashing_risk_score }}</div>
-          <div class="metric-label">Slashing risk</div>
+          <div class="metric-label">{{ snapshot.risk_label }}</div>
         </div>
       </div>
     </section>
@@ -82,17 +82,19 @@
           <article class="validator">
             <div class="validator-top">
               <div>
-                <div class="mono">#{{ v.index }}</div>
+                <div class="mono">{% if v.operator_index is not none %}#{{ v.operator_index }}{% else %}{{ v.operator_id }}{% endif %}</div>
                 {% if v.display_name %}
-                <div class="display-name" title="{{ v.pubkey or '' }}">{{ v.display_name }}</div>
-                <div class="pubkey muted" title="{{ v.pubkey or '' }}">{{ v.pubkey or "—" }}</div>
-                {% else %}
-                <div class="pubkey" title="{{ v.pubkey or '' }}">{{ v.pubkey or "—" }}</div>
+                <div class="display-name" title="{{ v.pubkey or v.operator_id or '' }}">{{ v.display_name }}</div>
+                <div class="pubkey muted" title="{{ v.pubkey or v.operator_id or '' }}">{{ v.pubkey or v.operator_id or "—" }}</div>
+                {% elif v.pubkey %}
+                <div class="pubkey" title="{{ v.pubkey }}">{{ v.pubkey }}</div>
+                {% elif v.operator_index is not none and v.operator_id and v.operator_id != (v.pubkey or '') %}
+                <div class="pubkey" title="{{ v.operator_id }}">{{ v.operator_id }}</div>
                 {% endif %}
               </div>
               <div class="right">
                 <div>{{ v.status }}</div>
-                <div class="mono">{{ format_balance(v.balance_gwei, snapshot) }}</div>
+                <div class="mono">{{ format_balance(v.balance_base_units if v.balance_base_units is not none else v.balance_gwei, snapshot) }}</div>
               </div>
             </div>
             <div class="meters">
@@ -101,14 +103,14 @@
                 <div class="bar"><div class="fill ok" style="width: {{ v.effectiveness_score }}%"></div></div>
               </div>
               <div class="meter">
-                <div class="meter-row"><span>{% if snapshot.operator_label == 'collator' %}Downtime risk{% else %}Slashing risk{% endif %}</span><span class="mono">{{ v.slashing_risk_score }}</span></div>
-                <div class="bar"><div class="fill risk" style="width: {{ [v.slashing_risk_score, 100]|min }}%"></div></div>
+                <div class="meter-row"><span>{{ snapshot.risk_label }}</span><span class="mono">{{ v.risk_score if v.risk_score is not none else v.slashing_risk_score }}</span></div>
+                <div class="bar"><div class="fill risk" style="width: {{ [(v.risk_score if v.risk_score is not none else v.slashing_risk_score), 100]|min }}%"></div></div>
               </div>
             </div>
             <div class="stats">
-              <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Collations{% else %}Attested{% endif %}</div><div class="mono">{{ v.attestations.successful }}/{{ v.attestations.expected }}</div></div>
+              <div><div class="muted">{{ snapshot.primary_duty_label }}</div><div class="mono">{{ v.attestations.successful }}/{{ v.attestations.expected }}</div></div>
               <div><div class="muted">Missed</div><div class="mono">{{ v.attestations.missed }}</div></div>
-              <div><div class="muted">{% if snapshot.operator_label == 'collator' %}Blocks{% else %}Proposals{% endif %}</div><div class="mono">{{ v.proposals.successful }}/{{ v.proposals.expected or "—" }}</div></div>
+              <div><div class="muted">{{ snapshot.secondary_duty_label }}</div><div class="mono">{{ v.proposals.successful }}/{{ v.proposals.expected or "—" }}</div></div>
               <div>
                 <div class="muted">
                   {% if snapshot.chain == 'ethereum' %}
@@ -122,14 +124,14 @@
                   {% if snapshot.chain == 'ethereum' %}
                   title="Attestations {{ v.attestation_rewards_gwei }} gwei · proposals {{ v.proposal_rewards_gwei }} gwei · sync committee {{ v.sync_committee_rewards_gwei }} gwei{% if v.reward_window_start_epoch is not none %} · epochs {{ v.reward_window_start_epoch }}–{{ v.reward_window_end_epoch }}{% endif %}"
                   {% endif %}
-                >{{ format_rewards(v.rewards_gwei, snapshot) }}</div>
+                >{{ format_rewards(v.rewards_base_units if v.rewards_base_units is not none else v.rewards_gwei, snapshot) }}</div>
               </div>
             </div>
-            {% if v.recent_attestations or v.recent_proposals %}
+            {% if v.recent_attestations or v.recent_proposals or v.recent_duties %}
             <div class="duty-history">
               {% if v.recent_attestations %}
               <div class="duty-row">
-                <span class="muted duty-label">{% if snapshot.operator_label == 'collator' %}Recent collations{% else %}Recent attestations{% endif %}</span>
+                <span class="muted duty-label">Recent {{ snapshot.primary_duty_label|lower }}</span>
                 <div class="duty-chips">
                   {% for d in v.recent_attestations %}
                   <span class="duty-chip outcome-{{ d.outcome }}" title="epoch {{ d.epoch }} · slot {{ d.slot }} · {{ d.outcome }}{% if d.inclusion_delay %} · delay {{ d.inclusion_delay }}{% endif %}">{{ d.outcome[0]|upper }}</span>
@@ -139,10 +141,20 @@
               {% endif %}
               {% if v.recent_proposals %}
               <div class="duty-row">
-                <span class="muted duty-label">{% if snapshot.operator_label == 'collator' %}Recent blocks{% else %}Recent proposals{% endif %}</span>
+                <span class="muted duty-label">Recent {{ snapshot.secondary_duty_label|lower }}</span>
                 <div class="duty-chips">
                   {% for d in v.recent_proposals %}
                   <span class="duty-chip outcome-{{ d.outcome }}" title="epoch {{ d.epoch }} · slot {{ d.slot }} · {{ d.outcome }}">{{ d.outcome[0]|upper }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+              {% if v.recent_duties and not v.recent_attestations and not v.recent_proposals %}
+              <div class="duty-row">
+                <span class="muted duty-label">Recent duties</span>
+                <div class="duty-chips">
+                  {% for d in v.recent_duties %}
+                  <span class="duty-chip outcome-{{ d.outcome }}" title="{{ d.label }} · {{ d.outcome }}">{{ d.outcome[0]|upper }}</span>
                   {% endfor %}
                 </div>
               </div>
@@ -166,7 +178,7 @@
             <div><div class="muted">{% if snapshot.chain == 'polkadot' %}Finalized block{% else %}Finalized epoch{% endif %}</div><div class="mono">{{ "{:,}".format(snapshot.consensus.finalized_epoch) }}</div></div>
             <div><div class="muted">{% if snapshot.chain == 'polkadot' %}Best block{% else %}Justified epoch{% endif %}</div><div class="mono">{{ "{:,}".format(snapshot.consensus.justified_epoch) }}</div></div>
             <div><div class="muted">Peers</div><div class="mono">{{ snapshot.consensus.connected_peers }}/{{ snapshot.consensus.peer_count }}</div></div>
-            <div><div class="muted">{% if snapshot.chain == 'polkadot' %}Node{% else %}Beacon{% endif %}</div><div class="mono">{{ "reachable" if snapshot.consensus.beacon_reachable else "down" }}</div></div>
+            <div><div class="muted">{{ snapshot.consensus_node_label }}</div><div class="mono">{{ "reachable" if snapshot.consensus.beacon_reachable else "down" }}</div></div>
           </div>
           {% if snapshot.consensus.last_error %}
           <p class="error">{{ snapshot.consensus.last_error }}</p>
@@ -233,17 +245,17 @@
       <div class="panel">
         <h3>Metrics scrape</h3>
         <p class="muted">Prometheus-compatible endpoint for the core KPIs.</p>
-        <pre id="metrics-preview"># HELP validator_effectiveness_score ...
-validator_effectiveness_score {{ snapshot.metrics.validator_effectiveness_score }}
-validator_missed_attestations_total {{ snapshot.metrics.validator_missed_attestations_total }}
-validator_slashing_risk_score {{ snapshot.metrics.validator_slashing_risk_score }}
-validator_rewards_gwei {{ snapshot.validators|sum(attribute='rewards_gwei') }}</pre>
+        <pre id="metrics-preview"># HELP operator_effectiveness_score ...
+operator_effectiveness_score{chain="{{ snapshot.chain }}"} {{ snapshot.metrics.validator_effectiveness_score }}
+operator_missed_primary_duties_total{chain="{{ snapshot.chain }}"} {{ snapshot.metrics.validator_missed_attestations_total }}
+operator_risk_score{chain="{{ snapshot.chain }}",risk_kind="{{ snapshot.risk_kind }}"} {{ snapshot.metrics.validator_slashing_risk_score }}
+# legacy aliases still exported: validator_* / *_gwei</pre>
         <a href="/api/metrics">Open /api/metrics</a>
       </div>
     </section>
 
     <footer>
-      Non-goal: ValidatorPulse does not scan external security surfaces. It monitors validator
+      Non-goal: ValidatorPulse does not scan external security surfaces. It monitors operator
       duties, consensus health, and host infrastructure.
     </footer>
   </div>

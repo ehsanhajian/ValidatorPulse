@@ -20,7 +20,7 @@ TEMPLATES = Jinja2Templates(directory=str(ROOT / "templates"))
 
 app = FastAPI(
     title="ValidatorPulse",
-    description="Keep blockchain validators healthy and prevent downtime and slashing.",
+    description="Keep blockchain operators healthy and catch downtime or penalties early.",
     version="0.1.0",
 )
 

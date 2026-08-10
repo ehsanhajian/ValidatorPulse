@@ -33,6 +33,12 @@ class EthereumAdapter:
     name = "ethereum"
     display_name = "Ethereum"
     operator_label = "validator"
+    risk_kind = "slashing"
+    risk_label = "Slashing risk"
+    primary_duty_label = "Attestations"
+    secondary_duty_label = "Proposals"
+    missed_duty_label = "Missed attestations"
+    consensus_node_label = "Beacon node"
 
     def is_demo(self, settings: Settings) -> bool:
         if settings.demo_mode:
@@ -147,10 +153,13 @@ class EthereumAdapter:
                 peer_count=consensus.connected_peers,
                 effectiveness_score=effectiveness,
             )
+            pubkey = b.get("pubkey")
             validators.append(
                 ValidatorStats(
                     index=index,
-                    pubkey=b.get("pubkey"),
+                    operator_id=pubkey or str(index),
+                    operator_index=index,
+                    pubkey=pubkey,
                     withdrawal_address=b.get("withdrawal_address"),
                     status=b["status"],
                     balance_gwei=b["balance_gwei"],
@@ -166,6 +175,7 @@ class EthereumAdapter:
                     reward_data_complete=view.reward_data_complete,
                     effectiveness_score=effectiveness,
                     slashing_risk_score=slashing_risk,
+                    risk_kind="slashing",
                     recent_attestations=view.recent_attestations,
                     recent_proposals=view.recent_proposals,
                 )
