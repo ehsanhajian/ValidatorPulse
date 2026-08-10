@@ -179,6 +179,44 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                 )
             )
 
+        # Relay NPoS: explicit offline + low era-point alerts.
+        if snapshot.chain == "polkadot" and snapshot.risk_kind == "slashing":
+            status_l = (v.status or "").lower()
+            if status_l in {"offline", "unreachable"} or "offline" in status_l:
+                alerts.append(
+                    AlertEvent(
+                        id=f"offline-{label}-{now}",
+                        severity="critical",
+                        title=f"Relay validator offline: {label}",
+                        message=(
+                            f"Status is '{v.status}'. Check heartbeat / session keys "
+                            "and relay node connectivity."
+                        ),
+                        source="validator",
+                        created_at=now,
+                        channels=channels,
+                    )
+                )
+            era_points = v.primary_duty().successful
+            if (
+                v.primary_duty().expected
+                and era_points < settings.alert_low_era_points_below
+            ):
+                alerts.append(
+                    AlertEvent(
+                        id=f"era-points-{label}-{now}",
+                        severity="warning",
+                        title=f"Low era points on validator {label}",
+                        message=(
+                            f"Era points {era_points} are below "
+                            f"threshold {settings.alert_low_era_points_below}."
+                        ),
+                        source="validator",
+                        created_at=now,
+                        channels=channels,
+                    )
+                )
+
     if not snapshot.consensus.beacon_reachable:
         alerts.append(
             AlertEvent(

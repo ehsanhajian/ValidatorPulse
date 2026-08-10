@@ -36,13 +36,15 @@ def get_adapter(chain: str) -> ChainAdapter:
     key = (chain or "").strip().lower()
     if not key:
         key = "ethereum"
+    if key in {"polkadot-relay", "polkadot_relay"}:
+        key = "polkadot"
 
     if key in _KNOWN_UNIMPLEMENTED:
         raise UnsupportedChainError(_KNOWN_UNIMPLEMENTED[key])
 
     factory = _REGISTRY.get(key)
     if factory is None:
-        known = ", ".join(list_known_chains())
+        known = ", ".join(list_known_chains() + ["polkadot-relay"])
         raise UnsupportedChainError(
             f"Unknown chain '{chain}'. Known values: {known}. "
             "Implemented today: " + ", ".join(list_implemented_chains())

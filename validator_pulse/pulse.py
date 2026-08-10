@@ -30,6 +30,9 @@ async def collect_pulse(
     except UnsupportedChainError:
         raise
 
+    if hasattr(adapter, "configure"):
+        adapter.configure(settings)
+
     infrastructure = collect_infrastructure()
     collection = await adapter.collect(settings, infrastructure)
     consensus = collection.consensus
@@ -55,9 +58,14 @@ async def collect_pulse(
     )
 
     metrics = aggregate_fleet_metrics(validators)
+    parachain_id = (
+        None
+        if getattr(adapter, "role", None) == "validator"
+        else settings.parachain_id
+    )
     token = resolve_reward_token(
         chain=adapter.name,
-        parachain_id=settings.parachain_id,
+        parachain_id=parachain_id,
         symbol_override=settings.reward_token_symbol,
         decimals_override=settings.reward_token_decimals,
     )
@@ -81,7 +89,7 @@ async def collect_pulse(
         secondary_duty_label=secondary_duty_label,
         missed_duty_label=missed_duty_label,
         consensus_node_label=consensus_node_label,
-        parachain_id=settings.parachain_id,
+        parachain_id=parachain_id,
         reward_token_symbol=token.symbol,
         reward_token_decimals=token.decimals,
         reward_token_base_unit=token.base_unit,
