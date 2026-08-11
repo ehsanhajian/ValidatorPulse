@@ -7,12 +7,7 @@ from validator_pulse.chains.base import ChainAdapter, UnsupportedChainError
 AdapterFactory = Callable[[], ChainAdapter]
 
 _REGISTRY: dict[str, AdapterFactory] = {}
-_KNOWN_UNIMPLEMENTED: dict[str, str] = {
-    "solana": (
-        "Solana validator monitoring is not implemented yet. "
-        "See https://github.com/ehsanhajian/ValidatorPulse/issues/6"
-    ),
-}
+_KNOWN_UNIMPLEMENTED: dict[str, str] = {}
 
 
 def register_adapter(name: str, factory: AdapterFactory) -> None:
@@ -53,10 +48,12 @@ def _load_builtin_adapters() -> None:
     from validator_pulse.chains.cosmos.adapter import CosmosAdapter
     from validator_pulse.chains.ethereum.adapter import EthereumAdapter
     from validator_pulse.chains.polkadot.adapter import PolkadotAdapter
+    from validator_pulse.chains.solana.adapter import SolanaAdapter
 
     register_adapter("ethereum", EthereumAdapter)
     register_adapter("polkadot", PolkadotAdapter)
     register_adapter("cosmos", CosmosAdapter)
+    register_adapter("solana", SolanaAdapter)
 
 
 _load_builtin_adapters()

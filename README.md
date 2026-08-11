@@ -36,7 +36,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `ethereum` | Implemented | Beacon validators (index / BLS pubkey) |
 | `polkadot` | Implemented | Parachain collators (`POLKADOT_ROLE=collator`) and relay validators (`POLKADOT_ROLE=validator` or `CHAIN=polkadot-relay`) |
 | `cosmos` | Implemented | Cosmos SDK / CometBFT validators (`COSMOS_PROFILE=cosmoshub` or `celestia`) |
-| `solana` | Planned | [#6](https://github.com/ehsanhajian/ValidatorPulse/issues/6) |
+| `solana` | Implemented | Solana validators (vote accounts / identity pubkeys) |
 | `near` | Planned | [#23](https://github.com/ehsanhajian/ValidatorPulse/issues/23) |
 | `cardano` | Planned | [#24](https://github.com/ehsanhajian/ValidatorPulse/issues/24) |
 | `tezos` | Planned | [#25](https://github.com/ehsanhajian/ValidatorPulse/issues/25) |
@@ -198,6 +198,22 @@ Live mode uses Cosmos LCD (staking / slashing params / signing info) plus CometB
 
 **Safety:** never copy a live consensus key/state directory between nodes — that can cause double signing and tombstoning. ValidatorPulse only observes remote APIs; it does not manage keys.
 
+### Solana
+
+Monitor vote accounts via Solana JSON-RPC (`getVoteAccounts`, `getBlockProduction`, `getHealth` / `getEpochInfo`).
+
+```env
+CHAIN=solana
+DEMO_MODE=false
+SOLANA_RPC_URL=http://127.0.0.1:8899
+VALIDATOR_VOTE_ACCOUNTS=Vote1111...,Vote2222...
+# Optional when vote accounts are unknown — resolve by validator identity:
+# SOLANA_IDENTITY_PUBKEYS=Node1111...
+ALERT_SKIP_RATE_ABOVE=10
+```
+
+Live mode maps epoch credits → primary duty effectiveness, leader-slot skip rate → secondary duty / risk, and delinquents → critical alerts. Demo mode is offline and includes healthy, high-skip, delinquent, and low-credits validators (SOL / lamports).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -279,7 +295,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -290,6 +306,10 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `COSMOS_REST_URL` / `COSMOS_RPC_URL` | Cosmos LCD + CometBFT RPC | unset |
 | `COSMOS_VALIDATOR_OPERATOR_ADDRESSES` | Comma-separated `*valoper…` addresses | empty |
 | `COSMOS_CHAIN_ID` / `COSMOS_GRPC_URL` | Optional chain id / gRPC (reserved) | unset |
+| `SOLANA_RPC_URL` | Solana JSON-RPC HTTP(S) endpoint | unset |
+| `VALIDATOR_VOTE_ACCOUNTS` | Comma-separated Solana vote account pubkeys | empty |
+| `SOLANA_IDENTITY_PUBKEYS` | Optional identity pubkeys when vote accounts unset | empty |
+| `ALERT_SKIP_RATE_ABOVE` | Solana skip-rate alert threshold (percent) | `10` |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

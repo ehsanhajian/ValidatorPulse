@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos (implemented); solana reserved.
+    # Active chain plugin: ethereum | polkadot | cosmos | solana (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     cosmos_validator_operator_addresses: str = ""
     cosmos_chain_id: str | None = None
     cosmos_profile: str = "cosmoshub"
+    # Solana
+    solana_rpc_url: str | None = None
+    # Comma-separated vote account pubkeys (preferred operator IDs)
+    validator_vote_accounts: str = ""
+    # Optional identity pubkeys — used when vote accounts are unset
+    solana_identity_pubkeys: str = ""
     # Optional overrides when parachain token isn't in the built-in map
     reward_token_symbol: str | None = None
     reward_token_decimals: int | None = None
@@ -76,6 +82,7 @@ class Settings(BaseSettings):
     alert_effectiveness_below: float = 95
     alert_slashing_risk_above: float = 40
     alert_low_era_points_below: int = 40
+    alert_skip_rate_above: float = 10.0
     alert_disk_usage_above: float = 85
     alert_clock_drift_ms: float = 500
 
@@ -107,6 +114,7 @@ class Settings(BaseSettings):
         "cosmos_rpc_url",
         "cosmos_grpc_url",
         "cosmos_chain_id",
+        "solana_rpc_url",
         mode="before",
     )
     @classmethod
@@ -164,6 +172,12 @@ class Settings(BaseSettings):
     def cosmos_validator_address_list(self) -> list[str]:
         return _split_csv(self.cosmos_validator_operator_addresses)
 
+    def solana_vote_account_list(self) -> list[str]:
+        return _split_csv(self.validator_vote_accounts)
+
+    def solana_identity_pubkey_list(self) -> list[str]:
+        return _split_csv(self.solana_identity_pubkeys)
+
     def resolved_chain(self) -> str:
         """Registry key for the active adapter (`polkadot-relay` → `polkadot`)."""
         key = (self.chain or "ethereum").strip().lower()
@@ -193,6 +207,8 @@ class Settings(BaseSettings):
             has_rest = bool(self.cosmos_rest_url and self.cosmos_rest_url.strip())
             has_rpc = bool(self.cosmos_rpc_url and self.cosmos_rpc_url.strip())
             return not (has_rest or has_rpc)
+        if chain == "solana":
+            return not bool(self.solana_rpc_url and self.solana_rpc_url.strip())
         return False
 
 

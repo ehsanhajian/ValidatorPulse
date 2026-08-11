@@ -233,6 +233,51 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # Solana: delinquency + high skip-rate protocol events.
+        if snapshot.chain == "solana":
+            for event in v.protocol_events:
+                if event.kind in {"delinquent", "high_skip_rate"}:
+                    alerts.append(
+                        AlertEvent(
+                            id=f"{event.kind}-{label}-{now}",
+                            severity=event.severity,
+                            title=(
+                                f"Validator delinquent: {label}"
+                                if event.kind == "delinquent"
+                                else f"High skip rate on validator {label}"
+                            ),
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+            # Also alert when leader skip % crosses the configured threshold.
+            leader = next(
+                (d for d in v.duties if d.label == "Leader slots"),
+                None,
+            )
+            if leader and leader.expected > 0:
+                skip_pct = (leader.missed / leader.expected) * 100.0
+                if skip_pct >= settings.alert_skip_rate_above and not any(
+                    e.kind == "high_skip_rate" for e in v.protocol_events
+                ):
+                    alerts.append(
+                        AlertEvent(
+                            id=f"skip-rate-{label}-{now}",
+                            severity="warning",
+                            title=f"High skip rate on validator {label}",
+                            message=(
+                                f"Skip rate {skip_pct:.1f}% is at or above "
+                                f"{settings.alert_skip_rate_above}% "
+                                f"({leader.missed}/{leader.expected} skipped)."
+                            ),
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
     if not snapshot.consensus.beacon_reachable:
         alerts.append(
             AlertEvent(

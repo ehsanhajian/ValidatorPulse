@@ -102,6 +102,13 @@ def resolve_reward_token(
             base_unit=profile.token_base_unit,
         )
 
+    if chain_key == "solana":
+        return TokenInfo(
+            symbol=(symbol_override or "SOL").upper(),
+            decimals=decimals_override if decimals_override is not None else 9,
+            base_unit="lamports",
+        )
+
     return TokenInfo(
         symbol=(symbol_override or "TOKEN").upper(),
         decimals=decimals_override if decimals_override is not None else 0,

@@ -57,3 +57,21 @@ def test_cosmos_hub_and_celestia_profiles() -> None:
     )
     assert overridden.symbol == "XTIA"
     assert overridden.decimals == 9
+
+
+def test_solana_token_defaults() -> None:
+    sol = resolve_reward_token(chain="solana")
+    assert sol.symbol == "SOL"
+    assert sol.decimals == 9
+    assert sol.base_unit == "lamports"
+    text = format_token_amount(2 * 10**9, sol)
+    assert "SOL" in text
+
+    overridden = resolve_reward_token(
+        chain="solana",
+        symbol_override="WSOL",
+        decimals_override=6,
+    )
+    assert overridden.symbol == "WSOL"
+    assert overridden.decimals == 6
+    assert overridden.base_unit == "lamports"

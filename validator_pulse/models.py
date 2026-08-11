@@ -43,6 +43,9 @@ ProtocolEventKind = Literal[
     "suspended",
     "tombstoned",
     "kes_expired",
+    "delinquent",
+    "high_skip_rate",
+    "rpc_error",
     "other",
 ]
 
