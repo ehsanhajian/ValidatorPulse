@@ -41,14 +41,11 @@ def test_cosmos_adapter_is_registered() -> None:
     assert "cosmos" in list_implemented_chains()
 
 
-def test_unimplemented_chain_has_clear_error() -> None:
-    with pytest.raises(UnsupportedChainError, match="issues/6"):
-        get_adapter("solana")
-    known = list_known_chains()
-    assert "cosmos" in known
-    assert "solana" in known
-    assert "cosmos" in list_implemented_chains()
-    assert "solana" not in list_implemented_chains()
+def test_solana_adapter_is_registered() -> None:
+    adapter = get_adapter("solana")
+    assert adapter.name == "solana"
+    assert adapter.operator_label == "validator"
+    assert "solana" in list_implemented_chains()
 
 
 def test_unknown_chain_lists_known_values() -> None:
@@ -57,3 +54,13 @@ def test_unknown_chain_lists_known_values() -> None:
     known = list_known_chains()
     assert "ethereum" in known
     assert "polkadot" in known
+    assert "cosmos" in known
+    assert "solana" in known
+    assert "solana" in list_implemented_chains()
+
+
+def test_unimplemented_reserved_chains_cleared() -> None:
+    # All previously reserved chains that still appear in docs are implemented.
+    for name in ("ethereum", "polkadot", "cosmos", "solana"):
+        assert get_adapter(name).name in {"ethereum", "polkadot", "cosmos", "solana"}
+        assert name in list_implemented_chains()
