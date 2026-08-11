@@ -36,6 +36,7 @@ def resolve_reward_token(
     parachain_id: int | None = None,
     symbol_override: str | None = None,
     decimals_override: int | None = None,
+    cosmos_profile: str | None = None,
 ) -> TokenInfo:
     chain_key = (chain or "").strip().lower()
 
@@ -82,6 +83,23 @@ def resolve_reward_token(
             symbol=f"PARA{parachain_id}",
             decimals=decimals_override if decimals_override is not None else 10,
             base_unit="planck",
+        )
+
+    if chain_key == "cosmos":
+        from validator_pulse.chains.cosmos.profiles import get_profile
+
+        try:
+            profile = get_profile(cosmos_profile)
+        except ValueError:
+            profile = get_profile("cosmoshub")
+        return TokenInfo(
+            symbol=(symbol_override or profile.token_symbol).upper(),
+            decimals=(
+                decimals_override
+                if decimals_override is not None
+                else profile.token_decimals
+            ),
+            base_unit=profile.token_base_unit,
         )
 
     return TokenInfo(

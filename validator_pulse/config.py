@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot (implemented); cosmos/solana reserved.
+    # Active chain plugin: ethereum | polkadot | cosmos (implemented); solana reserved.
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     # Relay validator stash accounts (SS58); controller/session keys optional later
     validator_stash_addresses: str = ""
     parachain_id: int | None = None
+    # Cosmos SDK / CometBFT
+    cosmos_rest_url: str | None = None
+    cosmos_rpc_url: str | None = None
+    cosmos_grpc_url: str | None = None
+    cosmos_validator_operator_addresses: str = ""
+    cosmos_chain_id: str | None = None
+    cosmos_profile: str = "cosmoshub"
     # Optional overrides when parachain token isn't in the built-in map
     reward_token_symbol: str | None = None
     reward_token_decimals: int | None = None
@@ -96,6 +103,10 @@ class Settings(BaseSettings):
         "web_auth_username",
         "web_auth_password",
         "web_metrics_token",
+        "cosmos_rest_url",
+        "cosmos_rpc_url",
+        "cosmos_grpc_url",
+        "cosmos_chain_id",
         mode="before",
     )
     @classmethod
@@ -111,6 +122,13 @@ class Settings(BaseSettings):
     def _normalize_polkadot_role(cls, value: Any) -> Any:
         if value is None or (isinstance(value, str) and value.strip() == ""):
             return "collator"
+        return str(value).strip().lower()
+
+    @field_validator("cosmos_profile", mode="before")
+    @classmethod
+    def _normalize_cosmos_profile(cls, value: Any) -> Any:
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            return "cosmoshub"
         return str(value).strip().lower()
 
     def indices(self) -> list[int]:
@@ -143,6 +161,9 @@ class Settings(BaseSettings):
     def validator_stash_address_list(self) -> list[str]:
         return _split_csv(self.validator_stash_addresses)
 
+    def cosmos_validator_address_list(self) -> list[str]:
+        return _split_csv(self.cosmos_validator_operator_addresses)
+
     def resolved_chain(self) -> str:
         """Registry key for the active adapter (`polkadot-relay` → `polkadot`)."""
         key = (self.chain or "ethereum").strip().lower()
@@ -168,6 +189,10 @@ class Settings(BaseSettings):
             return not bool(self.beacon_api_url and self.beacon_api_url.strip())
         if chain == "polkadot":
             return not bool(self.substrate_rpc_url and self.substrate_rpc_url.strip())
+        if chain == "cosmos":
+            has_rest = bool(self.cosmos_rest_url and self.cosmos_rest_url.strip())
+            has_rpc = bool(self.cosmos_rpc_url and self.cosmos_rpc_url.strip())
+            return not (has_rest or has_rpc)
         return False
 
 

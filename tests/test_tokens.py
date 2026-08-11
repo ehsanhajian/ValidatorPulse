@@ -37,3 +37,23 @@ def test_format_uses_symbol() -> None:
     token = resolve_reward_token(chain="polkadot", parachain_id=2006)
     text = format_token_amount(2 * 10**18, token)
     assert "ASTR" in text
+
+
+def test_cosmos_hub_and_celestia_profiles() -> None:
+    atom = resolve_reward_token(chain="cosmos", cosmos_profile="cosmoshub")
+    assert atom.symbol == "ATOM"
+    assert atom.decimals == 6
+    assert atom.base_unit == "uatom"
+
+    tia = resolve_reward_token(chain="cosmos", cosmos_profile="celestia")
+    assert tia.symbol == "TIA"
+    assert tia.decimals == 6
+
+    overridden = resolve_reward_token(
+        chain="cosmos",
+        cosmos_profile="celestia",
+        symbol_override="XTIA",
+        decimals_override=9,
+    )
+    assert overridden.symbol == "XTIA"
+    assert overridden.decimals == 9

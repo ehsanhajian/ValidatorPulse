@@ -35,7 +35,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | --- | --- | --- |
 | `ethereum` | Implemented | Beacon validators (index / BLS pubkey) |
 | `polkadot` | Implemented | Parachain collators (`POLKADOT_ROLE=collator`) and relay validators (`POLKADOT_ROLE=validator` or `CHAIN=polkadot-relay`) |
-| `cosmos` | Planned | [#5](https://github.com/ehsanhajian/ValidatorPulse/issues/5) (includes Celestia via Bech32 profiles) |
+| `cosmos` | Implemented | Cosmos SDK / CometBFT validators (`COSMOS_PROFILE=cosmoshub` or `celestia`) |
 | `solana` | Planned | [#6](https://github.com/ehsanhajian/ValidatorPulse/issues/6) |
 | `near` | Planned | [#23](https://github.com/ehsanhajian/ValidatorPulse/issues/23) |
 | `cardano` | Planned | [#24](https://github.com/ehsanhajian/ValidatorPulse/issues/24) |
@@ -164,6 +164,40 @@ VALIDATOR_STASH_ADDRESSES=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
 
 `PARACHAIN_ID` is ignored for relay role (DOT unless you override the token). Live mode currently derives a conservative duty window from relay-node sync/peers/reachability until full staking-storage decoding lands; demo mode simulates era points and blocks without a node.
 
+### Cosmos SDK / CometBFT
+
+One reusable `cosmos` adapter covers Cosmos Hub, Celestia, and other SDK chains via **Bech32 profiles** (`COSMOS_PROFILE`).
+
+| Profile | Operator prefix | Token | Default chain id |
+| --- | --- | --- | --- |
+| `cosmoshub` (default) | `cosmosvaloper…` | ATOM (6) | `cosmoshub-4` |
+| `celestia` | `celestiavaloper…` | TIA (6) | `celestia` |
+
+```env
+CHAIN=cosmos
+COSMOS_PROFILE=cosmoshub
+DEMO_MODE=false
+COSMOS_REST_URL=http://127.0.0.1:1317
+COSMOS_RPC_URL=http://127.0.0.1:26657
+COSMOS_VALIDATOR_OPERATOR_ADDRESSES=cosmosvaloper1...
+COSMOS_CHAIN_ID=cosmoshub-4
+```
+
+Celestia example:
+
+```env
+CHAIN=cosmos
+COSMOS_PROFILE=celestia
+DEMO_MODE=false
+COSMOS_REST_URL=http://127.0.0.1:1317
+COSMOS_RPC_URL=http://127.0.0.1:26657
+COSMOS_VALIDATOR_OPERATOR_ADDRESSES=celestiavaloper1...
+```
+
+Live mode uses Cosmos LCD (staking / slashing params / signing info) plus CometBFT `/status` and `/net_info`. Slashing window thresholds come from chain params when LCD is available. Demo mode is offline and profile-aware, including healthy, near-jail, jailed, and tombstoned validators.
+
+**Safety:** never copy a live consensus key/state directory between nodes — that can cause double signing and tombstoning. ValidatorPulse only observes remote APIs; it does not manage keys.
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -245,13 +279,17 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
 | `SUBSTRATE_RPC_URL` | Polkadot Substrate HTTP(S) RPC (any host/port) | unset |
 | `COLLATOR_ADDRESSES` | Parachain collator SS58 list | empty |
 | `VALIDATOR_STASH_ADDRESSES` | Relay validator stash SS58 list | empty |
+| `COSMOS_PROFILE` | `cosmoshub` or `celestia` Bech32/token profile | `cosmoshub` |
+| `COSMOS_REST_URL` / `COSMOS_RPC_URL` | Cosmos LCD + CometBFT RPC | unset |
+| `COSMOS_VALIDATOR_OPERATOR_ADDRESSES` | Comma-separated `*valoper…` addresses | empty |
+| `COSMOS_CHAIN_ID` / `COSMOS_GRPC_URL` | Optional chain id / gRPC (reserved) | unset |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

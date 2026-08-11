@@ -34,11 +34,21 @@ def test_polkadot_relay_alias_resolves() -> None:
     assert adapter.risk_kind == "slashing"
 
 
+def test_cosmos_adapter_is_registered() -> None:
+    adapter = get_adapter("cosmos")
+    assert adapter.name == "cosmos"
+    assert adapter.operator_label == "validator"
+    assert "cosmos" in list_implemented_chains()
+
+
 def test_unimplemented_chain_has_clear_error() -> None:
-    with pytest.raises(UnsupportedChainError, match="issues/5"):
-        get_adapter("cosmos")
     with pytest.raises(UnsupportedChainError, match="issues/6"):
         get_adapter("solana")
+    known = list_known_chains()
+    assert "cosmos" in known
+    assert "solana" in known
+    assert "cosmos" in list_implemented_chains()
+    assert "solana" not in list_implemented_chains()
 
 
 def test_unknown_chain_lists_known_values() -> None:
