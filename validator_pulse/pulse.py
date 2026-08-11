@@ -68,6 +68,7 @@ async def collect_pulse(
         parachain_id=parachain_id,
         symbol_override=settings.reward_token_symbol,
         decimals_override=settings.reward_token_decimals,
+        cosmos_profile=settings.cosmos_profile,
     )
     risk_kind = getattr(adapter, "risk_kind", "slashing")
     risk_label = getattr(adapter, "risk_label", "Slashing risk")

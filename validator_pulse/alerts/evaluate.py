@@ -217,6 +217,22 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                     )
                 )
 
+        # Cosmos: jail / tombstone protocol events.
+        if snapshot.chain == "cosmos":
+            for event in v.protocol_events:
+                if event.kind in {"jailed", "tombstoned"}:
+                    alerts.append(
+                        AlertEvent(
+                            id=f"{event.kind}-{label}-{now}",
+                            severity=event.severity,
+                            title=f"Validator {event.kind}: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
     if not snapshot.consensus.beacon_reachable:
         alerts.append(
             AlertEvent(
