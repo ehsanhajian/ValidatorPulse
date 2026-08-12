@@ -116,6 +116,13 @@ def resolve_reward_token(
             base_unit="yoctoNEAR",
         )
 
+    if chain_key == "cardano":
+        return TokenInfo(
+            symbol=(symbol_override or "ADA").upper(),
+            decimals=decimals_override if decimals_override is not None else 6,
+            base_unit="lovelace",
+        )
+
     return TokenInfo(
         symbol=(symbol_override or "TOKEN").upper(),
         decimals=decimals_override if decimals_override is not None else 0,

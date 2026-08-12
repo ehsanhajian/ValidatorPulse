@@ -56,6 +56,14 @@ def test_near_adapter_is_registered() -> None:
     assert "near" in list_implemented_chains()
 
 
+def test_cardano_adapter_is_registered() -> None:
+    adapter = get_adapter("cardano")
+    assert adapter.name == "cardano"
+    assert adapter.operator_label == "stake pool"
+    assert adapter.risk_kind == "suspension"
+    assert "cardano" in list_implemented_chains()
+
+
 def test_unknown_chain_lists_known_values() -> None:
     with pytest.raises(UnsupportedChainError, match="Known values"):
         get_adapter("bitcoin")
@@ -65,10 +73,11 @@ def test_unknown_chain_lists_known_values() -> None:
     assert "cosmos" in known
     assert "solana" in known
     assert "near" in known
-    assert "near" in list_implemented_chains()
+    assert "cardano" in known
+    assert "cardano" in list_implemented_chains()
 
 
 def test_unimplemented_reserved_chains_cleared() -> None:
-    for name in ("ethereum", "polkadot", "cosmos", "solana", "near"):
+    for name in ("ethereum", "polkadot", "cosmos", "solana", "near", "cardano"):
         assert get_adapter(name).name == name
         assert name in list_implemented_chains()

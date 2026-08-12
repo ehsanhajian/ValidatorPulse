@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos | solana | near (implemented).
+    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     near_rpc_url: str | None = None
     near_validator_account_ids: str = ""
     near_metrics_url: str | None = None
+    # Cardano stake pools
+    cardano_pool_ids: str = ""
+    cardano_tracer_url: str | None = None
+    cardano_node_name: str = "block-producer"
+    cardano_network: str = "mainnet"
+    cardano_node_socket_path: str | None = None
     # Optional overrides when parachain token isn't in the built-in map
     reward_token_symbol: str | None = None
     reward_token_decimals: int | None = None
@@ -87,6 +93,8 @@ class Settings(BaseSettings):
     alert_slashing_risk_above: float = 40
     alert_low_era_points_below: int = 40
     alert_skip_rate_above: float = 10.0
+    alert_cardano_kes_warning: int = 5
+    alert_cardano_kes_critical: int = 1
     alert_disk_usage_above: float = 85
     alert_clock_drift_ms: float = 500
 
@@ -121,6 +129,8 @@ class Settings(BaseSettings):
         "solana_rpc_url",
         "near_rpc_url",
         "near_metrics_url",
+        "cardano_tracer_url",
+        "cardano_node_socket_path",
         mode="before",
     )
     @classmethod
@@ -187,6 +197,9 @@ class Settings(BaseSettings):
     def near_validator_account_list(self) -> list[str]:
         return _split_csv(self.near_validator_account_ids)
 
+    def cardano_pool_id_list(self) -> list[str]:
+        return _split_csv(self.cardano_pool_ids)
+
     def resolved_chain(self) -> str:
         """Registry key for the active adapter (`polkadot-relay` → `polkadot`)."""
         key = (self.chain or "ethereum").strip().lower()
@@ -220,6 +233,8 @@ class Settings(BaseSettings):
             return not bool(self.solana_rpc_url and self.solana_rpc_url.strip())
         if chain == "near":
             return not bool(self.near_rpc_url and self.near_rpc_url.strip())
+        if chain == "cardano":
+            return not bool(self.cardano_tracer_url and self.cardano_tracer_url.strip())
         return False
 
 

@@ -93,3 +93,12 @@ def test_near_token_defaults() -> None:
     assert overridden.symbol == "WNEAR"
     assert overridden.decimals == 18
     assert overridden.base_unit == "yoctoNEAR"
+
+
+def test_cardano_token_defaults() -> None:
+    ada = resolve_reward_token(chain="cardano")
+    assert ada.symbol == "ADA"
+    assert ada.decimals == 6
+    assert ada.base_unit == "lovelace"
+    text = format_token_amount(2 * 10**6, ada)
+    assert "ADA" in text

@@ -310,6 +310,38 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # Cardano: KES expiry / forging suspension — never slashing terminology.
+        if snapshot.chain == "cardano":
+            for event in v.protocol_events:
+                if event.kind == "kes_expired":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"kes-{label}-{now}",
+                            severity=event.severity,
+                            title=(
+                                f"KES expired on stake pool {label}"
+                                if event.confirmed
+                                else f"KES expiry warning on stake pool {label}"
+                            ),
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "suspended":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"suspended-{label}-{now}",
+                            severity=event.severity,
+                            title=f"Stake pool forging suspended: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
     if not snapshot.consensus.beacon_reachable:
         alerts.append(
             AlertEvent(

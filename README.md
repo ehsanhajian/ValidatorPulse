@@ -38,7 +38,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `cosmos` | Implemented | Cosmos SDK / CometBFT validators (`COSMOS_PROFILE=cosmoshub` or `celestia`) |
 | `solana` | Implemented | Solana validators (vote accounts / identity pubkeys) |
 | `near` | Implemented | NEAR validators (account IDs; blocks / chunks / endorsements) |
-| `cardano` | Planned | [#24](https://github.com/ehsanhajian/ValidatorPulse/issues/24) |
+| `cardano` | Implemented | Stake pools via cardano-tracer Prometheus (leader slots, KES, forging) |
 | `tezos` | Planned | [#25](https://github.com/ehsanhajian/ValidatorPulse/issues/25) |
 | `algorand` | Planned | [#26](https://github.com/ehsanhajian/ValidatorPulse/issues/26) |
 | `bsc` | Planned | [#27](https://github.com/ehsanhajian/ValidatorPulse/issues/27) |
@@ -229,6 +229,25 @@ NEAR_VALIDATOR_ACCOUNT_IDS=pool1.near,pool2.near
 
 Live mode tracks blocks, chunks, and endorsements expected/produced for the current epoch, current/next set membership, prev-epoch kickout reasons, and `is_slashed`. Effectiveness weights blocks highest, then chunks, then endorsements. Kickout risk and malicious slashing use distinct alerts. Epoch counter snapshots reset at epoch boundaries without negative deltas. Demo mode is offline with healthy, near-kickout, set-transition, and slashed validators (NEAR / yoctoNEAR).
 
+### Cardano
+
+Monitor stake pools via **local cardano-tracer** Prometheus metrics from a block producer (node 10.2+ tracing). Cardano has reward loss from missed blocks but **does not slash pool stake** — labels and alerts use operational/reward risk only.
+
+```env
+CHAIN=cardano
+DEMO_MODE=false
+CARDANO_POOL_IDS=pool1...
+CARDANO_TRACER_URL=http://127.0.0.1:12789
+CARDANO_NODE_NAME=block-producer
+CARDANO_NETWORK=mainnet
+# Optional (not required for duty monitoring):
+# CARDANO_NODE_SOCKET_PATH=/run/cardano/node.socket
+ALERT_CARDANO_KES_WARNING=5
+ALERT_CARDANO_KES_CRITICAL=1
+```
+
+Live mode parses `blocksForged`, `slotsMissed`, leader-slot counters, `remainingKESPeriods`, peers, and epoch/slot from the tracer node page (`/node-slug`). Counter snapshots compute poll-to-poll forged/missed totals without double counting. When tracer metrics are unavailable, duty state is **unknown** (no invented leader slots). Demo mode covers healthy forging, missed slots, KES warning, and KES expired scenarios (ADA / lovelace).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -310,7 +329,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -328,6 +347,11 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `NEAR_RPC_URL` | NEAR JSON-RPC HTTP(S) endpoint | unset |
 | `NEAR_VALIDATOR_ACCOUNT_IDS` | Comma-separated validator / pool account IDs | empty |
 | `NEAR_METRICS_URL` | Optional nearcore Prometheus metrics URL | unset |
+| `CARDANO_POOL_IDS` | Comma-separated stake pool IDs (`pool1…`) | empty |
+| `CARDANO_TRACER_URL` | cardano-tracer Prometheus base URL | unset |
+| `CARDANO_NODE_NAME` | Tracer node slug (`TraceOptionNodeName`) | `block-producer` |
+| `CARDANO_NETWORK` | Network label (`mainnet`, `preprod`, …) | `mainnet` |
+| `ALERT_CARDANO_KES_WARNING` / `ALERT_CARDANO_KES_CRITICAL` | KES period thresholds | `5` / `1` |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |
