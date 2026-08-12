@@ -102,3 +102,12 @@ def test_cardano_token_defaults() -> None:
     assert ada.base_unit == "lovelace"
     text = format_token_amount(2 * 10**6, ada)
     assert "ADA" in text
+
+
+def test_tezos_token_defaults() -> None:
+    xtz = resolve_reward_token(chain="tezos")
+    assert xtz.symbol == "XTZ"
+    assert xtz.decimals == 6
+    assert xtz.base_unit == "mutez"
+    text = format_token_amount(2 * 10**6, xtz)
+    assert "XTZ" in text
