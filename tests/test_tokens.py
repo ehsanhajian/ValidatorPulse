@@ -75,3 +75,21 @@ def test_solana_token_defaults() -> None:
     assert overridden.symbol == "WSOL"
     assert overridden.decimals == 6
     assert overridden.base_unit == "lamports"
+
+
+def test_near_token_defaults() -> None:
+    near = resolve_reward_token(chain="near")
+    assert near.symbol == "NEAR"
+    assert near.decimals == 24
+    assert near.base_unit == "yoctoNEAR"
+    text = format_token_amount(2 * 10**24, near)
+    assert "NEAR" in text
+
+    overridden = resolve_reward_token(
+        chain="near",
+        symbol_override="WNEAR",
+        decimals_override=18,
+    )
+    assert overridden.symbol == "WNEAR"
+    assert overridden.decimals == 18
+    assert overridden.base_unit == "yoctoNEAR"

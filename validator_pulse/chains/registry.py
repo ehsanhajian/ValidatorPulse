@@ -47,6 +47,7 @@ def _load_builtin_adapters() -> None:
     # Local imports avoid circular deps at module import time.
     from validator_pulse.chains.cosmos.adapter import CosmosAdapter
     from validator_pulse.chains.ethereum.adapter import EthereumAdapter
+    from validator_pulse.chains.near.adapter import NearAdapter
     from validator_pulse.chains.polkadot.adapter import PolkadotAdapter
     from validator_pulse.chains.solana.adapter import SolanaAdapter
 
@@ -54,6 +55,7 @@ def _load_builtin_adapters() -> None:
     register_adapter("polkadot", PolkadotAdapter)
     register_adapter("cosmos", CosmosAdapter)
     register_adapter("solana", SolanaAdapter)
+    register_adapter("near", NearAdapter)
 
 
 _load_builtin_adapters()

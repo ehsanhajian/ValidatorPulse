@@ -278,6 +278,38 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # NEAR: kickout vs malicious slash are distinct.
+        if snapshot.chain == "near":
+            for event in v.protocol_events:
+                if event.kind == "slashed":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"slashed-{label}-{now}",
+                            severity="critical",
+                            title=f"Validator slashed: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "kicked":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"kicked-{label}-{now}",
+                            severity=event.severity,
+                            title=(
+                                f"Validator kickout: {label}"
+                                if event.confirmed
+                                else f"Elevated kickout risk on validator {label}"
+                            ),
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
     if not snapshot.consensus.beacon_reachable:
         alerts.append(
             AlertEvent(
