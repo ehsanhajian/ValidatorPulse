@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos | solana (implemented).
+    # Active chain plugin: ethereum | polkadot | cosmos | solana | near (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     validator_vote_accounts: str = ""
     # Optional identity pubkeys — used when vote accounts are unset
     solana_identity_pubkeys: str = ""
+    # NEAR
+    near_rpc_url: str | None = None
+    near_validator_account_ids: str = ""
+    near_metrics_url: str | None = None
     # Optional overrides when parachain token isn't in the built-in map
     reward_token_symbol: str | None = None
     reward_token_decimals: int | None = None
@@ -115,6 +119,8 @@ class Settings(BaseSettings):
         "cosmos_grpc_url",
         "cosmos_chain_id",
         "solana_rpc_url",
+        "near_rpc_url",
+        "near_metrics_url",
         mode="before",
     )
     @classmethod
@@ -178,6 +184,9 @@ class Settings(BaseSettings):
     def solana_identity_pubkey_list(self) -> list[str]:
         return _split_csv(self.solana_identity_pubkeys)
 
+    def near_validator_account_list(self) -> list[str]:
+        return _split_csv(self.near_validator_account_ids)
+
     def resolved_chain(self) -> str:
         """Registry key for the active adapter (`polkadot-relay` → `polkadot`)."""
         key = (self.chain or "ethereum").strip().lower()
@@ -209,6 +218,8 @@ class Settings(BaseSettings):
             return not (has_rest or has_rpc)
         if chain == "solana":
             return not bool(self.solana_rpc_url and self.solana_rpc_url.strip())
+        if chain == "near":
+            return not bool(self.near_rpc_url and self.near_rpc_url.strip())
         return False
 
 

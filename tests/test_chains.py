@@ -48,6 +48,14 @@ def test_solana_adapter_is_registered() -> None:
     assert "solana" in list_implemented_chains()
 
 
+def test_near_adapter_is_registered() -> None:
+    adapter = get_adapter("near")
+    assert adapter.name == "near"
+    assert adapter.operator_label == "validator"
+    assert adapter.risk_kind == "kickout"
+    assert "near" in list_implemented_chains()
+
+
 def test_unknown_chain_lists_known_values() -> None:
     with pytest.raises(UnsupportedChainError, match="Known values"):
         get_adapter("bitcoin")
@@ -56,11 +64,11 @@ def test_unknown_chain_lists_known_values() -> None:
     assert "polkadot" in known
     assert "cosmos" in known
     assert "solana" in known
-    assert "solana" in list_implemented_chains()
+    assert "near" in known
+    assert "near" in list_implemented_chains()
 
 
 def test_unimplemented_reserved_chains_cleared() -> None:
-    # All previously reserved chains that still appear in docs are implemented.
-    for name in ("ethereum", "polkadot", "cosmos", "solana"):
-        assert get_adapter(name).name in {"ethereum", "polkadot", "cosmos", "solana"}
+    for name in ("ethereum", "polkadot", "cosmos", "solana", "near"):
+        assert get_adapter(name).name == name
         assert name in list_implemented_chains()

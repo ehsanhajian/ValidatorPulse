@@ -37,7 +37,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `polkadot` | Implemented | Parachain collators (`POLKADOT_ROLE=collator`) and relay validators (`POLKADOT_ROLE=validator` or `CHAIN=polkadot-relay`) |
 | `cosmos` | Implemented | Cosmos SDK / CometBFT validators (`COSMOS_PROFILE=cosmoshub` or `celestia`) |
 | `solana` | Implemented | Solana validators (vote accounts / identity pubkeys) |
-| `near` | Planned | [#23](https://github.com/ehsanhajian/ValidatorPulse/issues/23) |
+| `near` | Implemented | NEAR validators (account IDs; blocks / chunks / endorsements) |
 | `cardano` | Planned | [#24](https://github.com/ehsanhajian/ValidatorPulse/issues/24) |
 | `tezos` | Planned | [#25](https://github.com/ehsanhajian/ValidatorPulse/issues/25) |
 | `algorand` | Planned | [#26](https://github.com/ehsanhajian/ValidatorPulse/issues/26) |
@@ -214,6 +214,21 @@ ALERT_SKIP_RATE_ABOVE=10
 
 Live mode maps epoch credits → primary duty effectiveness, leader-slot skip rate → secondary duty / risk, and delinquents → critical alerts. Demo mode is offline and includes healthy, high-skip, delinquent, and low-credits validators (SOL / lamports).
 
+### NEAR
+
+Monitor pool / validator account IDs via NEAR JSON-RPC (`status`, `validators`). Optional nearcore Prometheus metrics enrich host diagnosis and soft-fail if unavailable.
+
+```env
+CHAIN=near
+DEMO_MODE=false
+NEAR_RPC_URL=http://127.0.0.1:3030
+NEAR_VALIDATOR_ACCOUNT_IDS=pool1.near,pool2.near
+# Optional:
+# NEAR_METRICS_URL=http://127.0.0.1:3030/metrics
+```
+
+Live mode tracks blocks, chunks, and endorsements expected/produced for the current epoch, current/next set membership, prev-epoch kickout reasons, and `is_slashed`. Effectiveness weights blocks highest, then chunks, then endorsements. Kickout risk and malicious slashing use distinct alerts. Epoch counter snapshots reset at epoch boundaries without negative deltas. Demo mode is offline with healthy, near-kickout, set-transition, and slashed validators (NEAR / yoctoNEAR).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -295,7 +310,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -310,6 +325,9 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `VALIDATOR_VOTE_ACCOUNTS` | Comma-separated Solana vote account pubkeys | empty |
 | `SOLANA_IDENTITY_PUBKEYS` | Optional identity pubkeys when vote accounts unset | empty |
 | `ALERT_SKIP_RATE_ABOVE` | Solana skip-rate alert threshold (percent) | `10` |
+| `NEAR_RPC_URL` | NEAR JSON-RPC HTTP(S) endpoint | unset |
+| `NEAR_VALIDATOR_ACCOUNT_IDS` | Comma-separated validator / pool account IDs | empty |
+| `NEAR_METRICS_URL` | Optional nearcore Prometheus metrics URL | unset |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |
