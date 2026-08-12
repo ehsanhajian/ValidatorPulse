@@ -310,6 +310,46 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # Tezos: forbidden / denunciation / remaining miss budget — slashing terminology OK.
+        if snapshot.chain == "tezos":
+            for event in v.protocol_events:
+                if event.kind == "slashed":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"slashed-{label}-{now}",
+                            severity="critical",
+                            title=f"Baker slashed / forbidden: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "suspended":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"forbidden-{label}-{now}",
+                            severity="critical",
+                            title=f"Baker forbidden: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "other" and "allowed" in event.message.lower():
+                    alerts.append(
+                        AlertEvent(
+                            id=f"remaining-misses-{label}-{now}",
+                            severity=event.severity,
+                            title=f"Low remaining miss budget on baker {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
         # Cardano: KES expiry / forging suspension — never slashing terminology.
         if snapshot.chain == "cardano":
             for event in v.protocol_events:

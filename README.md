@@ -39,7 +39,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `solana` | Implemented | Solana validators (vote accounts / identity pubkeys) |
 | `near` | Implemented | NEAR validators (account IDs; blocks / chunks / endorsements) |
 | `cardano` | Implemented | Stake pools via cardano-tracer Prometheus (leader slots, KES, forging) |
-| `tezos` | Planned | [#25](https://github.com/ehsanhajian/ValidatorPulse/issues/25) |
+| `tezos` | Implemented | Tezos bakers via Octez protocol RPC (attestations, baking rights, participation) |
 | `algorand` | Planned | [#26](https://github.com/ehsanhajian/ValidatorPulse/issues/26) |
 | `bsc` | Planned | [#27](https://github.com/ehsanhajian/ValidatorPulse/issues/27) |
 | `aptos` | Planned | [#28](https://github.com/ehsanhajian/ValidatorPulse/issues/28) |
@@ -248,6 +248,23 @@ ALERT_CARDANO_KES_CRITICAL=1
 
 Live mode parses `blocksForged`, `slotsMissed`, leader-slot counters, `remainingKESPeriods`, peers, and epoch/slot from the tracer node page (`/node-slug`). Counter snapshots compute poll-to-poll forged/missed totals without double counting. When tracer metrics are unavailable, duty state is **unknown** (no invented leader slots). Demo mode covers healthy forging, missed slots, KES warning, and KES expired scenarios (ADA / lovelace).
 
+### Tezos
+
+Monitor bakers via **Octez protocol RPC** (REST, not JSON-RPC). Tracks attestation and baking rights, cycle participation (`missed_slots`, `remaining_allowed_missed_slots`), delegate forbidden/deactivated state, and pending denunciations. Optional OpenMetrics at `TEZOS_METRICS_URL` and baker log path for future enrichment — both soft-fail when unavailable.
+
+```env
+CHAIN=tezos
+DEMO_MODE=false
+TEZOS_RPC_URL=http://127.0.0.1:8732
+TEZOS_BAKER_ADDRESSES=tz1...,tz2...
+# Optional:
+# TEZOS_METRICS_URL=http://127.0.0.1:9091/metrics
+# TEZOS_BAKER_LOG_PATH=/var/log/tezos/baker.log
+ALERT_TEZOS_REMAINING_MISSES_BELOW=2
+```
+
+Live mode filters baking/attestation rights per configured delegate, reconciles participation counters, and detects reorgs via head level/hash regression. Forbidden or denounced delegates raise critical slashing alerts (risk 100). Demo mode covers healthy baking, missed rights, low remaining miss budget, and forbidden/double-sign scenarios (XTZ / mutez).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -329,7 +346,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -352,6 +369,11 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `CARDANO_NODE_NAME` | Tracer node slug (`TraceOptionNodeName`) | `block-producer` |
 | `CARDANO_NETWORK` | Network label (`mainnet`, `preprod`, …) | `mainnet` |
 | `ALERT_CARDANO_KES_WARNING` / `ALERT_CARDANO_KES_CRITICAL` | KES period thresholds | `5` / `1` |
+| `TEZOS_RPC_URL` | Octez protocol RPC HTTP(S) base URL | unset |
+| `TEZOS_BAKER_ADDRESSES` | Comma-separated baker delegate addresses (`tz1…`) | empty |
+| `TEZOS_METRICS_URL` | Optional OpenMetrics URL (soft-fail) | unset |
+| `TEZOS_BAKER_LOG_PATH` | Optional baker log path (reserved enrichment) | unset |
+| `ALERT_TEZOS_REMAINING_MISSES_BELOW` | Alert when allowed attestation misses ≤ N | `2` |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

@@ -123,6 +123,13 @@ def resolve_reward_token(
             base_unit="lovelace",
         )
 
+    if chain_key == "tezos":
+        return TokenInfo(
+            symbol=(symbol_override or "XTZ").upper(),
+            decimals=decimals_override if decimals_override is not None else 6,
+            base_unit="mutez",
+        )
+
     return TokenInfo(
         symbol=(symbol_override or "TOKEN").upper(),
         decimals=decimals_override if decimals_override is not None else 0,
