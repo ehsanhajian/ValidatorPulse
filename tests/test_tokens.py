@@ -129,3 +129,12 @@ def test_aptos_token_defaults() -> None:
     assert apt.base_unit == "octas"
     text = format_token_amount(2 * 10**8, apt)
     assert "APT" in text
+
+
+def test_sui_token_defaults() -> None:
+    sui = resolve_reward_token(chain="sui")
+    assert sui.symbol == "SUI"
+    assert sui.decimals == 9
+    assert sui.base_unit == "MIST"
+    text = format_token_amount(2 * 10**9, sui)
+    assert "SUI" in text

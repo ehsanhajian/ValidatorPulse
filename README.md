@@ -43,7 +43,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `algorand` | Implemented | Algorand participation nodes via local authenticated algod (partkeys, online status) |
 | `bsc` | Planned | [#27](https://github.com/ehsanhajian/ValidatorPulse/issues/27) |
 | `aptos` | Implemented | Aptos validators via fullnode REST + stake view (proposals, set membership) |
-| `sui` | Planned | [#29](https://github.com/ehsanhajian/ValidatorPulse/issues/29) |
+| `sui` | Implemented | Sui validators via GraphQL + optional local Prometheus (proposals, atRisk, reports) |
 | `monad` | Planned | [#30](https://github.com/ehsanhajian/ValidatorPulse/issues/30) |
 | `avalanche` | Planned | [#31](https://github.com/ehsanhajian/ValidatorPulse/issues/31) |
 | `mina` | Planned | [#32](https://github.com/ehsanhajian/ValidatorPulse/issues/32) |
@@ -301,6 +301,22 @@ ALERT_APTOS_FAILED_PROPOSALS=3
 
 Live mode resolves pool → validator index from `ValidatorSet` (re-checked each epoch), maps successful/failed proposals to duties, and preserves epoch counter snapshots without negative deltas. Demo mode covers active, degraded, and inactive pools (APT / octas).
 
+### Sui
+
+Monitor validators via **Sui GraphQL** (not deprecated JSON-RPC) for epoch/system/validator-set state, plus optional local Prometheus (`9184/metrics`) for proposal/checkpoint duty detail. Safe mode and confirmed **reward slashing** (report records) are critical; **low-stake `atRisk`** stays a distinct signal.
+
+```env
+CHAIN=sui
+DEMO_MODE=false
+SUI_GRAPHQL_URL=https://graphql.mainnet.sui.io/graphql
+SUI_VALIDATOR_ADDRESSES=0x...
+# Optional local node metrics (soft-fail if unavailable):
+# SUI_METRICS_URL=http://127.0.0.1:9184/metrics
+ALERT_SUI_AT_RISK_EPOCHS=3
+```
+
+Live mode paginates the active validator set, joins configured addresses, and records proposal/checkpoint counter deltas without double counting. Missing local metrics preserves on-chain membership/atRisk/report state and marks duty detail unavailable. Demo mode covers healthy, at-risk, and reward-slashed validators (SUI / MIST).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -382,7 +398,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `aptos`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `aptos`, `sui`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -421,6 +437,10 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `APTOS_METRICS_URL` | Optional Node Inspection metrics URL | unset |
 | `APTOS_API_KEY` | Optional Aptos Labs / gateway API key | unset |
 | `ALERT_APTOS_FAILED_PROPOSALS` | Alert when failed proposals ≥ N this epoch | `3` |
+| `SUI_GRAPHQL_URL` | Sui GraphQL HTTP endpoint (not JSON-RPC) | unset |
+| `SUI_VALIDATOR_ADDRESSES` | Comma-separated validator addresses | empty |
+| `SUI_METRICS_URL` | Optional local Prometheus metrics URL | unset |
+| `ALERT_SUI_AT_RISK_EPOCHS` | Critical when low-stake atRisk epochs ≥ N | `3` |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

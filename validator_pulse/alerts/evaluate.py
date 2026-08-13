@@ -310,6 +310,43 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # Sui: safe mode / reward slashing / low-stake atRisk — keep distinct.
+        if snapshot.chain == "sui":
+            for event in v.protocol_events:
+                if event.kind == "slashed":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"sui-reward-slash-{label}-{now}",
+                            severity="critical",
+                            title=f"Reward slashing risk on validator {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "other" and (
+                    "safe mode" in event.message.lower()
+                    or "atrisk" in event.message.lower().replace("-", "")
+                    or "at risk" in event.message.lower()
+                    or "low-stake" in event.message.lower()
+                ):
+                    alerts.append(
+                        AlertEvent(
+                            id=f"sui-health-{label}-{now}",
+                            severity=event.severity,
+                            title=(
+                                f"Safe mode risk on validator {label}"
+                                if "safe mode" in event.message.lower()
+                                else f"Low-stake atRisk on validator {label}"
+                            ),
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
         # Aptos: failed proposals / inactive — reward risk only (no principal slash).
         if snapshot.chain == "aptos":
             for event in v.protocol_events:

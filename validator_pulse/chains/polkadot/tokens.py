@@ -144,6 +144,13 @@ def resolve_reward_token(
             base_unit="octas",
         )
 
+    if chain_key == "sui":
+        return TokenInfo(
+            symbol=(symbol_override or "SUI").upper(),
+            decimals=decimals_override if decimals_override is not None else 9,
+            base_unit="MIST",
+        )
+
     return TokenInfo(
         symbol=(symbol_override or "TOKEN").upper(),
         decimals=decimals_override if decimals_override is not None else 0,

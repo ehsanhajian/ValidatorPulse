@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | aptos (implemented).
+    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | aptos | sui (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     aptos_pool_addresses: str = ""
     aptos_metrics_url: str | None = None
     aptos_api_key: str | None = None
+    # Sui validators (GraphQL + optional local Prometheus; no JSON-RPC)
+    sui_graphql_url: str | None = None
+    sui_validator_addresses: str = ""
+    sui_metrics_url: str | None = None
     # Optional overrides when parachain token isn't in the built-in map
     reward_token_symbol: str | None = None
     reward_token_decimals: int | None = None
@@ -115,6 +119,7 @@ class Settings(BaseSettings):
     alert_algorand_partkey_warning_rounds: int = 50_000
     alert_algorand_heartbeat_gap_rounds: int = 10_000
     alert_aptos_failed_proposals: int = 3
+    alert_sui_at_risk_epochs: int = 3
     alert_disk_usage_above: float = 85
     alert_clock_drift_ms: float = 500
 
@@ -161,6 +166,8 @@ class Settings(BaseSettings):
         "aptos_rest_url",
         "aptos_metrics_url",
         "aptos_api_key",
+        "sui_graphql_url",
+        "sui_metrics_url",
         mode="before",
     )
     @classmethod
@@ -239,6 +246,9 @@ class Settings(BaseSettings):
     def aptos_pool_address_list(self) -> list[str]:
         return _split_csv(self.aptos_pool_addresses)
 
+    def sui_validator_address_list(self) -> list[str]:
+        return _split_csv(self.sui_validator_addresses)
+
     def resolved_chain(self) -> str:
         """Registry key for the active adapter (`polkadot-relay` → `polkadot`)."""
         key = (self.chain or "ethereum").strip().lower()
@@ -280,6 +290,8 @@ class Settings(BaseSettings):
             return not bool(self.algorand_algod_url and self.algorand_algod_url.strip())
         if chain == "aptos":
             return not bool(self.aptos_rest_url and self.aptos_rest_url.strip())
+        if chain == "sui":
+            return not bool(self.sui_graphql_url and self.sui_graphql_url.strip())
         return False
 
 
