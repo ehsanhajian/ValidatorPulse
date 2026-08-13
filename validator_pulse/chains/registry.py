@@ -53,6 +53,7 @@ def _load_builtin_adapters() -> None:
     from validator_pulse.chains.near.adapter import NearAdapter
     from validator_pulse.chains.polkadot.adapter import PolkadotAdapter
     from validator_pulse.chains.solana.adapter import SolanaAdapter
+    from validator_pulse.chains.sui.adapter import SuiAdapter
     from validator_pulse.chains.tezos.adapter import TezosAdapter
 
     register_adapter("ethereum", EthereumAdapter)
@@ -64,6 +65,7 @@ def _load_builtin_adapters() -> None:
     register_adapter("tezos", TezosAdapter)
     register_adapter("algorand", AlgorandAdapter)
     register_adapter("aptos", AptosAdapter)
+    register_adapter("sui", SuiAdapter)
 
 
 _load_builtin_adapters()

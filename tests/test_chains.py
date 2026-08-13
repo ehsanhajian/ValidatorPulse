@@ -88,6 +88,14 @@ def test_aptos_adapter_is_registered() -> None:
     assert "aptos" in list_implemented_chains()
 
 
+def test_sui_adapter_is_registered() -> None:
+    adapter = get_adapter("sui")
+    assert adapter.name == "sui"
+    assert adapter.operator_label == "validator"
+    assert adapter.risk_kind == "reward_loss"
+    assert "sui" in list_implemented_chains()
+
+
 def test_unknown_chain_lists_known_values() -> None:
     with pytest.raises(UnsupportedChainError, match="Known values"):
         get_adapter("bitcoin")
@@ -101,10 +109,12 @@ def test_unknown_chain_lists_known_values() -> None:
     assert "tezos" in known
     assert "algorand" in known
     assert "aptos" in known
+    assert "sui" in known
     assert "cardano" in list_implemented_chains()
     assert "tezos" in list_implemented_chains()
     assert "algorand" in list_implemented_chains()
     assert "aptos" in list_implemented_chains()
+    assert "sui" in list_implemented_chains()
 
 
 def test_unimplemented_reserved_chains_cleared() -> None:
@@ -118,6 +128,7 @@ def test_unimplemented_reserved_chains_cleared() -> None:
         "tezos",
         "algorand",
         "aptos",
+        "sui",
     ):
         assert get_adapter(name).name == name
         assert name in list_implemented_chains()
