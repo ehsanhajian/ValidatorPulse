@@ -130,6 +130,13 @@ def resolve_reward_token(
             base_unit="mutez",
         )
 
+    if chain_key == "algorand":
+        return TokenInfo(
+            symbol=(symbol_override or "ALGO").upper(),
+            decimals=decimals_override if decimals_override is not None else 6,
+            base_unit="microAlgos",
+        )
+
     return TokenInfo(
         symbol=(symbol_override or "TOKEN").upper(),
         decimals=decimals_override if decimals_override is not None else 0,

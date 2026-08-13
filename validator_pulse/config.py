@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos (implemented).
+    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     tezos_baker_addresses: str = ""
     tezos_metrics_url: str | None = None
     tezos_baker_log_path: str | None = None
+    # Algorand participation nodes (local authenticated algod)
+    algorand_algod_url: str | None = None
+    algorand_algod_token: str | None = None
+    algorand_algod_token_file: str | None = None
+    algorand_account_addresses: str = ""
+    algorand_metrics_url: str | None = None
     # Optional overrides when parachain token isn't in the built-in map
     reward_token_symbol: str | None = None
     reward_token_decimals: int | None = None
@@ -101,6 +107,8 @@ class Settings(BaseSettings):
     alert_cardano_kes_warning: int = 5
     alert_cardano_kes_critical: int = 1
     alert_tezos_remaining_misses_below: int = 2
+    alert_algorand_partkey_warning_rounds: int = 50_000
+    alert_algorand_heartbeat_gap_rounds: int = 10_000
     alert_disk_usage_above: float = 85
     alert_clock_drift_ms: float = 500
 
@@ -140,6 +148,10 @@ class Settings(BaseSettings):
         "tezos_rpc_url",
         "tezos_metrics_url",
         "tezos_baker_log_path",
+        "algorand_algod_url",
+        "algorand_algod_token",
+        "algorand_algod_token_file",
+        "algorand_metrics_url",
         mode="before",
     )
     @classmethod
@@ -212,6 +224,9 @@ class Settings(BaseSettings):
     def tezos_baker_address_list(self) -> list[str]:
         return _split_csv(self.tezos_baker_addresses)
 
+    def algorand_account_address_list(self) -> list[str]:
+        return _split_csv(self.algorand_account_addresses)
+
     def resolved_chain(self) -> str:
         """Registry key for the active adapter (`polkadot-relay` → `polkadot`)."""
         key = (self.chain or "ethereum").strip().lower()
@@ -249,6 +264,8 @@ class Settings(BaseSettings):
             return not bool(self.cardano_tracer_url and self.cardano_tracer_url.strip())
         if chain == "tezos":
             return not bool(self.tezos_rpc_url and self.tezos_rpc_url.strip())
+        if chain == "algorand":
+            return not bool(self.algorand_algod_url and self.algorand_algod_url.strip())
         return False
 
 
