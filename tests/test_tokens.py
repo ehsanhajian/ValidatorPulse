@@ -111,3 +111,12 @@ def test_tezos_token_defaults() -> None:
     assert xtz.base_unit == "mutez"
     text = format_token_amount(2 * 10**6, xtz)
     assert "XTZ" in text
+
+
+def test_algorand_token_defaults() -> None:
+    algo = resolve_reward_token(chain="algorand")
+    assert algo.symbol == "ALGO"
+    assert algo.decimals == 6
+    assert algo.base_unit == "microAlgos"
+    text = format_token_amount(2 * 10**6, algo)
+    assert "ALGO" in text

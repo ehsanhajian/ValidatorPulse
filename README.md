@@ -40,7 +40,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `near` | Implemented | NEAR validators (account IDs; blocks / chunks / endorsements) |
 | `cardano` | Implemented | Stake pools via cardano-tracer Prometheus (leader slots, KES, forging) |
 | `tezos` | Implemented | Tezos bakers via Octez protocol RPC (attestations, baking rights, participation) |
-| `algorand` | Planned | [#26](https://github.com/ehsanhajian/ValidatorPulse/issues/26) |
+| `algorand` | Implemented | Algorand participation nodes via local authenticated algod (partkeys, online status) |
 | `bsc` | Planned | [#27](https://github.com/ehsanhajian/ValidatorPulse/issues/27) |
 | `aptos` | Planned | [#28](https://github.com/ehsanhajian/ValidatorPulse/issues/28) |
 | `sui` | Planned | [#29](https://github.com/ehsanhajian/ValidatorPulse/issues/29) |
@@ -265,6 +265,25 @@ ALERT_TEZOS_REMAINING_MISSES_BELOW=2
 
 Live mode filters baking/attestation rights per configured delegate, reconciles participation counters, and detects reorgs via head level/hash regression. Forbidden or denounced delegates raise critical slashing alerts (risk 100). Demo mode covers healthy baking, missed rights, low remaining miss budget, and forbidden/double-sign scenarios (XTZ / mutez).
 
+### Algorand
+
+Monitor participation nodes via **local authenticated algod** (`/v2/status`, `/v2/accounts/{address}`, `/v2/participation`). Committee selection is private and probabilistic — the adapter records **observed** votes/proposals only and never invents expected or missed committee duties. Suspension/offline is operational risk (not slashing).
+
+```env
+CHAIN=algorand
+DEMO_MODE=false
+ALGORAND_ALGOD_URL=http://127.0.0.1:8080
+# Prefer token file; ALGORAND_ALGOD_TOKEN also works (never logged):
+ALGORAND_ALGOD_TOKEN_FILE=/var/lib/algorand/algod.token
+ALGORAND_ACCOUNT_ADDRESSES=ABC...,XYZ...
+# Optional:
+# ALGORAND_METRICS_URL=http://127.0.0.1:9100/metrics
+ALERT_ALGORAND_PARTKEY_WARNING_ROUNDS=50000
+ALERT_ALGORAND_HEARTBEAT_GAP_ROUNDS=10000
+```
+
+Live mode joins account status with participation keys by address, surfaces missing/expired/expiring keys distinctly, and raises critical alerts on Online→Offline or incentive-eligible→false transitions. Algod credentials are redacted from errors and API payloads. Demo mode covers healthy, key-expiring, key-missing, and suspended/offline scenarios (ALGO / microAlgos).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -346,7 +365,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -374,6 +393,12 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `TEZOS_METRICS_URL` | Optional OpenMetrics URL (soft-fail) | unset |
 | `TEZOS_BAKER_LOG_PATH` | Optional baker log path (reserved enrichment) | unset |
 | `ALERT_TEZOS_REMAINING_MISSES_BELOW` | Alert when allowed attestation misses ≤ N | `2` |
+| `ALGORAND_ALGOD_URL` | Local algod REST base URL | unset |
+| `ALGORAND_ALGOD_TOKEN` / `ALGORAND_ALGOD_TOKEN_FILE` | Algod API token (env or file; never logged) | unset |
+| `ALGORAND_ACCOUNT_ADDRESSES` | Comma-separated account addresses | empty |
+| `ALGORAND_METRICS_URL` | Optional algod Prometheus metrics URL | unset |
+| `ALERT_ALGORAND_PARTKEY_WARNING_ROUNDS` | Warn when partkey remaining rounds ≤ N | `50000` |
+| `ALERT_ALGORAND_HEARTBEAT_GAP_ROUNDS` | Warn when heartbeat lags head by ≥ N rounds | `10000` |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

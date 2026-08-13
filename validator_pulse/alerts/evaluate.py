@@ -310,6 +310,46 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # Algorand: suspension / offline / partkey — operational risk, never slash wording.
+        if snapshot.chain == "algorand":
+            for event in v.protocol_events:
+                if event.kind == "suspended":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"offline-{label}-{now}",
+                            severity="critical",
+                            title=f"Participation node offline: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "other" and (
+                    "participation key" in event.message.lower()
+                    or "incentive" in event.message.lower()
+                    or "heartbeat" in event.message.lower()
+                ):
+                    alerts.append(
+                        AlertEvent(
+                            id=f"algorand-health-{label}-{now}",
+                            severity=event.severity,
+                            title=(
+                                f"Participation key issue on {label}"
+                                if "participation key" in event.message.lower()
+                                else (
+                                    f"Incentive eligibility lost on {label}"
+                                    if "incentive" in event.message.lower()
+                                    else f"Heartbeat warning on {label}"
+                                )
+                            ),
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
         # Tezos: forbidden / denunciation / remaining miss budget — slashing terminology OK.
         if snapshot.chain == "tezos":
             for event in v.protocol_events:
