@@ -310,6 +310,31 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # Aptos: failed proposals / inactive — reward risk only (no principal slash).
+        if snapshot.chain == "aptos":
+            for event in v.protocol_events:
+                if event.kind == "other" and (
+                    "failed proposal" in event.message.lower()
+                    or "inactive" in event.message.lower()
+                    or "pending inactive" in event.message.lower()
+                ):
+                    alerts.append(
+                        AlertEvent(
+                            id=f"aptos-reward-{label}-{now}",
+                            severity=event.severity,
+                            title=(
+                                f"Validator inactive: {label}"
+                                if "inactive" in event.message.lower()
+                                and "pending" not in event.message.lower()
+                                else f"Elevated reward risk on validator {label}"
+                            ),
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
         # Algorand: suspension / offline / partkey — operational risk, never slash wording.
         if snapshot.chain == "algorand":
             for event in v.protocol_events:

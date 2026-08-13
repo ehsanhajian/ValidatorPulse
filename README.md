@@ -42,7 +42,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `tezos` | Implemented | Tezos bakers via Octez protocol RPC (attestations, baking rights, participation) |
 | `algorand` | Implemented | Algorand participation nodes via local authenticated algod (partkeys, online status) |
 | `bsc` | Planned | [#27](https://github.com/ehsanhajian/ValidatorPulse/issues/27) |
-| `aptos` | Planned | [#28](https://github.com/ehsanhajian/ValidatorPulse/issues/28) |
+| `aptos` | Implemented | Aptos validators via fullnode REST + stake view (proposals, set membership) |
 | `sui` | Planned | [#29](https://github.com/ehsanhajian/ValidatorPulse/issues/29) |
 | `monad` | Planned | [#30](https://github.com/ehsanhajian/ValidatorPulse/issues/30) |
 | `avalanche` | Planned | [#31](https://github.com/ehsanhajian/ValidatorPulse/issues/31) |
@@ -284,6 +284,23 @@ ALERT_ALGORAND_HEARTBEAT_GAP_ROUNDS=10000
 
 Live mode joins account status with participation keys by address, surfaces missing/expired/expiring keys distinctly, and raises critical alerts on Online→Offline or incentive-eligible→false transitions. Algod credentials are redacted from errors and API payloads. Demo mode covers healthy, key-expiring, key-missing, and suspended/offline scenarios (ALGO / microAlgos).
 
+### Aptos
+
+Monitor validators by **staking-pool address** via fullnode REST and Move view functions (`0x1::stake::get_current_epoch_proposal_counts`, set membership, stake). Aptos has reward loss for failed proposals but **no principal slashing** — labels and alerts use reward risk only. Optional Node Inspection metrics enrich diagnosis and soft-fail if unavailable.
+
+```env
+CHAIN=aptos
+DEMO_MODE=false
+APTOS_REST_URL=https://fullnode.mainnet.aptoslabs.com/v1
+APTOS_POOL_ADDRESSES=0x...
+# Optional:
+# APTOS_METRICS_URL=http://127.0.0.1:9101/metrics
+# APTOS_API_KEY=
+ALERT_APTOS_FAILED_PROPOSALS=3
+```
+
+Live mode resolves pool → validator index from `ValidatorSet` (re-checked each epoch), maps successful/failed proposals to duties, and preserves epoch counter snapshots without negative deltas. Demo mode covers active, degraded, and inactive pools (APT / octas).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -365,7 +382,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `aptos`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -399,6 +416,11 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `ALGORAND_METRICS_URL` | Optional algod Prometheus metrics URL | unset |
 | `ALERT_ALGORAND_PARTKEY_WARNING_ROUNDS` | Warn when partkey remaining rounds ≤ N | `50000` |
 | `ALERT_ALGORAND_HEARTBEAT_GAP_ROUNDS` | Warn when heartbeat lags head by ≥ N rounds | `10000` |
+| `APTOS_REST_URL` | Aptos fullnode REST base (`…/v1`) | unset |
+| `APTOS_POOL_ADDRESSES` | Comma-separated staking-pool addresses | empty |
+| `APTOS_METRICS_URL` | Optional Node Inspection metrics URL | unset |
+| `APTOS_API_KEY` | Optional Aptos Labs / gateway API key | unset |
+| `ALERT_APTOS_FAILED_PROPOSALS` | Alert when failed proposals ≥ N this epoch | `3` |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

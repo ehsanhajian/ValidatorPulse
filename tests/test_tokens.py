@@ -120,3 +120,12 @@ def test_algorand_token_defaults() -> None:
     assert algo.base_unit == "microAlgos"
     text = format_token_amount(2 * 10**6, algo)
     assert "ALGO" in text
+
+
+def test_aptos_token_defaults() -> None:
+    apt = resolve_reward_token(chain="aptos")
+    assert apt.symbol == "APT"
+    assert apt.decimals == 8
+    assert apt.base_unit == "octas"
+    text = format_token_amount(2 * 10**8, apt)
+    assert "APT" in text

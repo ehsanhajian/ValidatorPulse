@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand (implemented).
+    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | aptos (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     algorand_algod_token_file: str | None = None
     algorand_account_addresses: str = ""
     algorand_metrics_url: str | None = None
+    # Aptos validators (fullnode REST + stake view)
+    aptos_rest_url: str | None = None
+    aptos_pool_addresses: str = ""
+    aptos_metrics_url: str | None = None
+    aptos_api_key: str | None = None
     # Optional overrides when parachain token isn't in the built-in map
     reward_token_symbol: str | None = None
     reward_token_decimals: int | None = None
@@ -109,6 +114,7 @@ class Settings(BaseSettings):
     alert_tezos_remaining_misses_below: int = 2
     alert_algorand_partkey_warning_rounds: int = 50_000
     alert_algorand_heartbeat_gap_rounds: int = 10_000
+    alert_aptos_failed_proposals: int = 3
     alert_disk_usage_above: float = 85
     alert_clock_drift_ms: float = 500
 
@@ -152,6 +158,9 @@ class Settings(BaseSettings):
         "algorand_algod_token",
         "algorand_algod_token_file",
         "algorand_metrics_url",
+        "aptos_rest_url",
+        "aptos_metrics_url",
+        "aptos_api_key",
         mode="before",
     )
     @classmethod
@@ -227,6 +236,9 @@ class Settings(BaseSettings):
     def algorand_account_address_list(self) -> list[str]:
         return _split_csv(self.algorand_account_addresses)
 
+    def aptos_pool_address_list(self) -> list[str]:
+        return _split_csv(self.aptos_pool_addresses)
+
     def resolved_chain(self) -> str:
         """Registry key for the active adapter (`polkadot-relay` → `polkadot`)."""
         key = (self.chain or "ethereum").strip().lower()
@@ -266,6 +278,8 @@ class Settings(BaseSettings):
             return not bool(self.tezos_rpc_url and self.tezos_rpc_url.strip())
         if chain == "algorand":
             return not bool(self.algorand_algod_url and self.algorand_algod_url.strip())
+        if chain == "aptos":
+            return not bool(self.aptos_rest_url and self.aptos_rest_url.strip())
         return False
 
 
