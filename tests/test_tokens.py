@@ -122,6 +122,15 @@ def test_algorand_token_defaults() -> None:
     assert "ALGO" in text
 
 
+def test_bsc_token_defaults() -> None:
+    bnb = resolve_reward_token(chain="bsc")
+    assert bnb.symbol == "BNB"
+    assert bnb.decimals == 18
+    assert bnb.base_unit == "wei"
+    text = format_token_amount(2 * 10**18, bnb)
+    assert "BNB" in text
+
+
 def test_aptos_token_defaults() -> None:
     apt = resolve_reward_token(chain="aptos")
     assert apt.symbol == "APT"
