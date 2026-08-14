@@ -310,6 +310,41 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # Monad: reward/eligibility loss only — automated slashing is not implemented.
+        if snapshot.chain == "monad":
+            for event in v.protocol_events:
+                if event.kind == "other" and (
+                    "missed" in event.message.lower()
+                    or "ineligible" in event.message.lower()
+                    or "lag" in event.message.lower()
+                    or "set transition" in event.message.lower()
+                    or "left the consensus" in event.message.lower()
+                    or "not in the current consensus" in event.message.lower()
+                ):
+                    alerts.append(
+                        AlertEvent(
+                            id=f"monad-reward-{label}-{now}",
+                            severity=event.severity,
+                            title=(
+                                f"Validator ineligible: {label}"
+                                if "ineligible" in event.message.lower()
+                                else (
+                                    f"Consensus lag on validator {label}"
+                                    if "lag" in event.message.lower()
+                                    else (
+                                        f"Set transition on validator {label}"
+                                        if "set" in event.message.lower()
+                                        else f"Elevated reward risk on validator {label}"
+                                    )
+                                )
+                            ),
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
         # Sui: safe mode / reward slashing / low-stake atRisk — keep distinct.
         if snapshot.chain == "sui":
             for event in v.protocol_events:

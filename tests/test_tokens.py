@@ -138,3 +138,12 @@ def test_sui_token_defaults() -> None:
     assert sui.base_unit == "MIST"
     text = format_token_amount(2 * 10**9, sui)
     assert "SUI" in text
+
+
+def test_monad_token_defaults() -> None:
+    mon = resolve_reward_token(chain="monad")
+    assert mon.symbol == "MON"
+    assert mon.decimals == 18
+    assert mon.base_unit == "wei"
+    text = format_token_amount(2 * 10**18, mon)
+    assert "MON" in text
