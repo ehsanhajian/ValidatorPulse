@@ -44,7 +44,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `bsc` | Planned | [#27](https://github.com/ehsanhajian/ValidatorPulse/issues/27) |
 | `aptos` | Implemented | Aptos validators via fullnode REST + stake view (proposals, set membership) |
 | `sui` | Implemented | Sui validators via GraphQL + optional local Prometheus (proposals, atRisk, reports) |
-| `monad` | Planned | [#30](https://github.com/ehsanhajian/ValidatorPulse/issues/30) |
+| `monad` | Implemented | Monad validators via EVM RPC staking precompile `0x1000` (set, epoch, local duties) |
 | `avalanche` | Planned | [#31](https://github.com/ehsanhajian/ValidatorPulse/issues/31) |
 | `mina` | Planned | [#32](https://github.com/ehsanhajian/ValidatorPulse/issues/32) |
 | `multiversx` | Planned | [#33](https://github.com/ehsanhajian/ValidatorPulse/issues/33) |
@@ -317,6 +317,23 @@ ALERT_SUI_AT_RISK_EPOCHS=3
 
 Live mode paginates the active validator set, joins configured addresses, and records proposal/checkpoint counter deltas without double counting. Missing local metrics preserves on-chain membership/atRisk/report state and marks duty detail unavailable. Demo mode covers healthy, at-risk, and reward-slashed validators (SUI / MIST).
 
+### Monad
+
+Monitor validators by **numeric validator ID** via Monad EVM RPC (chain ID **143**) and staking precompile `0x1000` (`getValidator`, paginated `getConsensusValidatorSet`, `getEpoch`, `getProposerValId`). Exact missed-duty claims require local `monad-ledger-tail` JSON or Prometheus; **EVM RPC alone is insufficient**. Automated slashing is not implemented — labels use reward/eligibility risk only.
+
+```env
+CHAIN=monad
+DEMO_MODE=false
+MONAD_RPC_URL=https://rpc.monad.xyz
+MONAD_VALIDATOR_IDS=123
+# Optional local evidence:
+# MONAD_METRICS_URL=http://127.0.0.1:8889/metrics
+# MONAD_LEDGER_TAIL_PATH=/var/log/monad/ledger-tail.json
+# MONAD_STATUS_PATH=/var/lib/monad/status.json
+```
+
+Live mode verifies chain ID 143, paginates the consensus leader set across epochs, and only classifies authored/missed proposals when local ledger or metrics evidence is present. RPC-only mode marks duty history unavailable. Demo mode covers healthy proposals, consensus lag, local failures, and set transitions (MON / wei).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -398,7 +415,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `aptos`, `sui`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `aptos`, `sui`, `monad`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -441,6 +458,11 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `SUI_VALIDATOR_ADDRESSES` | Comma-separated validator addresses | empty |
 | `SUI_METRICS_URL` | Optional local Prometheus metrics URL | unset |
 | `ALERT_SUI_AT_RISK_EPOCHS` | Critical when low-stake atRisk epochs ≥ N | `3` |
+| `MONAD_RPC_URL` | Monad EVM JSON-RPC HTTP(S) endpoint | unset |
+| `MONAD_VALIDATOR_IDS` | Comma-separated numeric validator IDs | empty |
+| `MONAD_METRICS_URL` | Optional local Prometheus/OTel metrics URL | unset |
+| `MONAD_LEDGER_TAIL_PATH` | Optional read-only `monad-ledger-tail` JSON/NDJSON | unset |
+| `MONAD_STATUS_PATH` | Optional read-only `monad-status` JSON | unset |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

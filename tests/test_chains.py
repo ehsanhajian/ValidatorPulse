@@ -96,6 +96,14 @@ def test_sui_adapter_is_registered() -> None:
     assert "sui" in list_implemented_chains()
 
 
+def test_monad_adapter_is_registered() -> None:
+    adapter = get_adapter("monad")
+    assert adapter.name == "monad"
+    assert adapter.operator_label == "validator"
+    assert adapter.risk_kind == "reward_loss"
+    assert "monad" in list_implemented_chains()
+
+
 def test_unknown_chain_lists_known_values() -> None:
     with pytest.raises(UnsupportedChainError, match="Known values"):
         get_adapter("bitcoin")
@@ -110,11 +118,9 @@ def test_unknown_chain_lists_known_values() -> None:
     assert "algorand" in known
     assert "aptos" in known
     assert "sui" in known
-    assert "cardano" in list_implemented_chains()
-    assert "tezos" in list_implemented_chains()
-    assert "algorand" in list_implemented_chains()
-    assert "aptos" in list_implemented_chains()
+    assert "monad" in known
     assert "sui" in list_implemented_chains()
+    assert "monad" in list_implemented_chains()
 
 
 def test_unimplemented_reserved_chains_cleared() -> None:
@@ -129,6 +135,7 @@ def test_unimplemented_reserved_chains_cleared() -> None:
         "algorand",
         "aptos",
         "sui",
+        "monad",
     ):
         assert get_adapter(name).name == name
         assert name in list_implemented_chains()
