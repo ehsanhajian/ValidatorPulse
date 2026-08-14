@@ -278,6 +278,60 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # BSC: double-sign / malicious finality are immediately critical.
+        if snapshot.chain == "bsc":
+            for event in v.protocol_events:
+                if event.kind == "slashed":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"bsc-slash-{label}-{now}",
+                            severity="critical",
+                            title=f"Validator slashed: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "jailed":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"bsc-jail-{label}-{now}",
+                            severity="critical",
+                            title=f"Validator jailed: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "other" and (
+                    "maintenance" in event.message.lower()
+                    or "slash indicator" in event.message.lower()
+                    or "missed block" in event.message.lower()
+                    or "working set" in event.message.lower()
+                    or "did not resolve" in event.message.lower()
+                ):
+                    alerts.append(
+                        AlertEvent(
+                            id=f"bsc-risk-{label}-{now}",
+                            severity=event.severity,
+                            title=(
+                                f"Validator in maintenance: {label}"
+                                if "maintenance" in event.message.lower()
+                                else (
+                                    f"Set change on validator {label}"
+                                    if "working set" in event.message.lower()
+                                    else f"Elevated slashing risk on validator {label}"
+                                )
+                            ),
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
         # NEAR: kickout vs malicious slash are distinct.
         if snapshot.chain == "near":
             for event in v.protocol_events:

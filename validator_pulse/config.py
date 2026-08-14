@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | aptos | sui | monad (implemented).
+    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | bsc | aptos | sui | monad (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -78,6 +78,14 @@ class Settings(BaseSettings):
     sui_graphql_url: str | None = None
     sui_validator_addresses: str = ""
     sui_metrics_url: str | None = None
+    # BNB Smart Chain validators (SlashIndicator + StakeHub)
+    bsc_rpc_url: str | None = None
+    bsc_validator_addresses: str = ""
+    bsc_metrics_url: str | None = None
+    bsc_slash_contract: str | None = None
+    bsc_stake_hub_contract: str | None = None
+    bsc_misdemeanor_threshold: int | None = None
+    bsc_felony_threshold: int | None = None
     # Monad validators (EVM RPC staking precompile 0x1000 + optional local evidence)
     monad_rpc_url: str | None = None
     monad_validator_ids: str = ""
@@ -138,7 +146,13 @@ class Settings(BaseSettings):
     # Optional dedicated token for GET /api/metrics (Bearer / X-Metrics-Token / ?token=)
     web_metrics_token: str | None = None
 
-    @field_validator("parachain_id", "reward_token_decimals", mode="before")
+    @field_validator(
+        "parachain_id",
+        "reward_token_decimals",
+        "bsc_misdemeanor_threshold",
+        "bsc_felony_threshold",
+        mode="before",
+    )
     @classmethod
     def _empty_optional_int(cls, value: Any) -> Any:
         if value is None:
@@ -174,6 +188,10 @@ class Settings(BaseSettings):
         "aptos_api_key",
         "sui_graphql_url",
         "sui_metrics_url",
+        "bsc_rpc_url",
+        "bsc_metrics_url",
+        "bsc_slash_contract",
+        "bsc_stake_hub_contract",
         "monad_rpc_url",
         "monad_metrics_url",
         "monad_ledger_tail_path",
@@ -259,6 +277,9 @@ class Settings(BaseSettings):
     def sui_validator_address_list(self) -> list[str]:
         return _split_csv(self.sui_validator_addresses)
 
+    def bsc_validator_address_list(self) -> list[str]:
+        return _split_csv(self.bsc_validator_addresses)
+
     def monad_validator_id_list(self) -> list[int]:
         values: list[int] = []
         for part in _split_csv(self.monad_validator_ids):
@@ -311,6 +332,8 @@ class Settings(BaseSettings):
             return not bool(self.aptos_rest_url and self.aptos_rest_url.strip())
         if chain == "sui":
             return not bool(self.sui_graphql_url and self.sui_graphql_url.strip())
+        if chain == "bsc":
+            return not bool(self.bsc_rpc_url and self.bsc_rpc_url.strip())
         if chain == "monad":
             return not bool(self.monad_rpc_url and self.monad_rpc_url.strip())
         return False

@@ -41,7 +41,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `cardano` | Implemented | Stake pools via cardano-tracer Prometheus (leader slots, KES, forging) |
 | `tezos` | Implemented | Tezos bakers via Octez protocol RPC (attestations, baking rights, participation) |
 | `algorand` | Implemented | Algorand participation nodes via local authenticated algod (partkeys, online status) |
-| `bsc` | Planned | [#27](https://github.com/ehsanhajian/ValidatorPulse/issues/27) |
+| `bsc` | Implemented | BNB Smart Chain validators via SlashIndicator + StakeHub (turns, jail, slash) |
 | `aptos` | Implemented | Aptos validators via fullnode REST + stake view (proposals, set membership) |
 | `sui` | Implemented | Sui validators via GraphQL + optional local Prometheus (proposals, atRisk, reports) |
 | `monad` | Implemented | Monad validators via EVM RPC staking precompile `0x1000` (set, epoch, local duties) |
@@ -284,6 +284,25 @@ ALERT_ALGORAND_HEARTBEAT_GAP_ROUNDS=10000
 
 Live mode joins account status with participation keys by address, surfaces missing/expired/expiring keys distinctly, and raises critical alerts on Online→Offline or incentive-eligible→false transitions. Algod credentials are redacted from errors and API payloads. Demo mode covers healthy, key-expiring, key-missing, and suspended/offline scenarios (ALGO / microAlgos).
 
+### BNB Smart Chain
+
+Monitor validators by **operator or consensus address** via BSC JSON-RPC system contracts: `SlashIndicator` (`0x1001`) and `StakeHub` (`0x2002`), plus `BSCValidatorSet` (`0x1000`) for the working/living/mining sets. Downtime thresholds are read from `getSlashThresholds()` or explicit `BSC_MISDEMEANOR_THRESHOLD` / `BSC_FELONY_THRESHOLD` — **never hard-coded** (official pages disagree). Double-sign and malicious finality votes are immediately critical. Optional local Geth Prometheus covers node latency.
+
+```env
+CHAIN=bsc
+DEMO_MODE=false
+BSC_RPC_URL=https://bsc-dataseed.binance.org
+BSC_VALIDATOR_ADDRESSES=0x...
+# Optional:
+# BSC_METRICS_URL=http://127.0.0.1:6060/debug/metrics/prometheus
+# BSC_SLASH_CONTRACT=0x0000000000000000000000000000000000001001
+# BSC_STAKE_HUB_CONTRACT=0x0000000000000000000000000000000000002002
+# BSC_MISDEMEANOR_THRESHOLD=
+# BSC_FELONY_THRESHOLD=
+```
+
+Live mode resolves operator ↔ consensus ↔ vote identity through StakeHub, paginates the hub validator list, tracks working-set membership across Parlia set changes, and surfaces slash-indicator counts, maintenance, jail, and recent slash events. Demo mode covers missed turns, maintenance, double-sign slash, and jail (BNB / wei).
+
 ### Aptos
 
 Monitor validators by **staking-pool address** via fullnode REST and Move view functions (`0x1::stake::get_current_epoch_proposal_counts`, set membership, stake). Aptos has reward loss for failed proposals but **no principal slashing** — labels and alerts use reward risk only. Optional Node Inspection metrics enrich diagnosis and soft-fail if unavailable.
@@ -415,7 +434,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `aptos`, `sui`, `monad`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `bsc`, `aptos`, `sui`, `monad`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -449,6 +468,12 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `ALGORAND_METRICS_URL` | Optional algod Prometheus metrics URL | unset |
 | `ALERT_ALGORAND_PARTKEY_WARNING_ROUNDS` | Warn when partkey remaining rounds ≤ N | `50000` |
 | `ALERT_ALGORAND_HEARTBEAT_GAP_ROUNDS` | Warn when heartbeat lags head by ≥ N rounds | `10000` |
+| `BSC_RPC_URL` | BSC JSON-RPC HTTP(S) endpoint | unset |
+| `BSC_VALIDATOR_ADDRESSES` | Comma-separated operator or consensus addresses | empty |
+| `BSC_METRICS_URL` | Optional local Geth Prometheus metrics URL | unset |
+| `BSC_SLASH_CONTRACT` | SlashIndicator address | `0x…1001` |
+| `BSC_STAKE_HUB_CONTRACT` | StakeHub address | `0x…2002` |
+| `BSC_MISDEMEANOR_THRESHOLD` / `BSC_FELONY_THRESHOLD` | Optional overrides; otherwise contract `getSlashThresholds()` | unset |
 | `APTOS_REST_URL` | Aptos fullnode REST base (`…/v1`) | unset |
 | `APTOS_POOL_ADDRESSES` | Comma-separated staking-pool addresses | empty |
 | `APTOS_METRICS_URL` | Optional Node Inspection metrics URL | unset |

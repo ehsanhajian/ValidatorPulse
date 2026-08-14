@@ -47,6 +47,7 @@ def _load_builtin_adapters() -> None:
     # Local imports avoid circular deps at module import time.
     from validator_pulse.chains.algorand.adapter import AlgorandAdapter
     from validator_pulse.chains.aptos.adapter import AptosAdapter
+    from validator_pulse.chains.bsc.adapter import BscAdapter
     from validator_pulse.chains.cardano.adapter import CardanoAdapter
     from validator_pulse.chains.cosmos.adapter import CosmosAdapter
     from validator_pulse.chains.ethereum.adapter import EthereumAdapter
@@ -65,6 +66,7 @@ def _load_builtin_adapters() -> None:
     register_adapter("cardano", CardanoAdapter)
     register_adapter("tezos", TezosAdapter)
     register_adapter("algorand", AlgorandAdapter)
+    register_adapter("bsc", BscAdapter)
     register_adapter("aptos", AptosAdapter)
     register_adapter("sui", SuiAdapter)
     register_adapter("monad", MonadAdapter)

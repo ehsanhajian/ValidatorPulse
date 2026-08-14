@@ -80,6 +80,14 @@ def test_algorand_adapter_is_registered() -> None:
     assert "algorand" in list_implemented_chains()
 
 
+def test_bsc_adapter_is_registered() -> None:
+    adapter = get_adapter("bsc")
+    assert adapter.name == "bsc"
+    assert adapter.operator_label == "validator"
+    assert adapter.risk_kind == "slashing"
+    assert "bsc" in list_implemented_chains()
+
+
 def test_aptos_adapter_is_registered() -> None:
     adapter = get_adapter("aptos")
     assert adapter.name == "aptos"
@@ -116,9 +124,11 @@ def test_unknown_chain_lists_known_values() -> None:
     assert "cardano" in known
     assert "tezos" in known
     assert "algorand" in known
+    assert "bsc" in known
     assert "aptos" in known
     assert "sui" in known
     assert "monad" in known
+    assert "bsc" in list_implemented_chains()
     assert "sui" in list_implemented_chains()
     assert "monad" in list_implemented_chains()
 
@@ -133,9 +143,11 @@ def test_unimplemented_reserved_chains_cleared() -> None:
         "cardano",
         "tezos",
         "algorand",
+        "bsc",
         "aptos",
         "sui",
         "monad",
     ):
         assert get_adapter(name).name == name
         assert name in list_implemented_chains()
+

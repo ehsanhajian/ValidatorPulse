@@ -137,6 +137,13 @@ def resolve_reward_token(
             base_unit="microAlgos",
         )
 
+    if chain_key == "bsc":
+        return TokenInfo(
+            symbol=(symbol_override or "BNB").upper(),
+            decimals=decimals_override if decimals_override is not None else 18,
+            base_unit="wei",
+        )
+
     if chain_key == "aptos":
         return TokenInfo(
             symbol=(symbol_override or "APT").upper(),
