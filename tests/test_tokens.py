@@ -156,3 +156,12 @@ def test_monad_token_defaults() -> None:
     assert mon.base_unit == "wei"
     text = format_token_amount(2 * 10**18, mon)
     assert "MON" in text
+
+
+def test_avalanche_token_defaults() -> None:
+    avax = resolve_reward_token(chain="avalanche")
+    assert avax.symbol == "AVAX"
+    assert avax.decimals == 9
+    assert avax.base_unit == "nAVAX"
+    text = format_token_amount(2 * 10**9, avax)
+    assert "AVAX" in text

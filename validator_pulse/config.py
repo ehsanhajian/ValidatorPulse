@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | bsc | aptos | sui | monad (implemented).
+    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | bsc | aptos | sui | monad | avalanche (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -86,6 +86,12 @@ class Settings(BaseSettings):
     bsc_stake_hub_contract: str | None = None
     bsc_misdemeanor_threshold: int | None = None
     bsc_felony_threshold: int | None = None
+    # Avalanche Primary Network validators (P-Chain + local info/metrics)
+    avalanche_rpc_url: str | None = None
+    avalanche_node_ids: str = ""
+    avalanche_network: str = "mainnet"
+    avalanche_metrics_url: str | None = None
+    avalanche_uptime_threshold: float | None = None
     # Monad validators (EVM RPC staking precompile 0x1000 + optional local evidence)
     monad_rpc_url: str | None = None
     monad_validator_ids: str = ""
@@ -134,6 +140,7 @@ class Settings(BaseSettings):
     alert_algorand_heartbeat_gap_rounds: int = 10_000
     alert_aptos_failed_proposals: int = 3
     alert_sui_at_risk_epochs: int = 3
+    alert_avalanche_runway_hours: float = 24
     alert_disk_usage_above: float = 85
     alert_clock_drift_ms: float = 500
 
@@ -151,6 +158,7 @@ class Settings(BaseSettings):
         "reward_token_decimals",
         "bsc_misdemeanor_threshold",
         "bsc_felony_threshold",
+        "avalanche_uptime_threshold",
         mode="before",
     )
     @classmethod
@@ -192,6 +200,8 @@ class Settings(BaseSettings):
         "bsc_metrics_url",
         "bsc_slash_contract",
         "bsc_stake_hub_contract",
+        "avalanche_rpc_url",
+        "avalanche_metrics_url",
         "monad_rpc_url",
         "monad_metrics_url",
         "monad_ledger_tail_path",
@@ -280,6 +290,9 @@ class Settings(BaseSettings):
     def bsc_validator_address_list(self) -> list[str]:
         return _split_csv(self.bsc_validator_addresses)
 
+    def avalanche_node_id_list(self) -> list[str]:
+        return _split_csv(self.avalanche_node_ids)
+
     def monad_validator_id_list(self) -> list[int]:
         values: list[int] = []
         for part in _split_csv(self.monad_validator_ids):
@@ -334,6 +347,8 @@ class Settings(BaseSettings):
             return not bool(self.sui_graphql_url and self.sui_graphql_url.strip())
         if chain == "bsc":
             return not bool(self.bsc_rpc_url and self.bsc_rpc_url.strip())
+        if chain == "avalanche":
+            return not bool(self.avalanche_rpc_url and self.avalanche_rpc_url.strip())
         if chain == "monad":
             return not bool(self.monad_rpc_url and self.monad_rpc_url.strip())
         return False

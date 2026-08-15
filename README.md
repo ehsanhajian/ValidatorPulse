@@ -45,7 +45,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `aptos` | Implemented | Aptos validators via fullnode REST + stake view (proposals, set membership) |
 | `sui` | Implemented | Sui validators via GraphQL + optional local Prometheus (proposals, atRisk, reports) |
 | `monad` | Implemented | Monad validators via EVM RPC staking precompile `0x1000` (set, epoch, local duties) |
-| `avalanche` | Planned | [#31](https://github.com/ehsanhajian/ValidatorPulse/issues/31) |
+| `avalanche` | Implemented | Avalanche Primary Network validators via P-Chain + local info/metrics (uptime, runway) |
 | `mina` | Planned | [#32](https://github.com/ehsanhajian/ValidatorPulse/issues/32) |
 | `multiversx` | Planned | [#33](https://github.com/ehsanhajian/ValidatorPulse/issues/33) |
 | `ton` | Planned | [#34](https://github.com/ehsanhajian/ValidatorPulse/issues/34) |
@@ -353,6 +353,26 @@ MONAD_VALIDATOR_IDS=123
 
 Live mode verifies chain ID 143, paginates the consensus leader set across epochs, and only classifies authored/missed proposals when local ledger or metrics evidence is present. RPC-only mode marks duty history unavailable. Demo mode covers healthy proposals, consensus lag, local failures, and set transitions (MON / wei).
 
+### Avalanche
+
+Monitor **Primary Network** validators by **NodeID** via P-Chain `platform.getCurrentValidators` (membership, stake, start/end, queried-node uptime). Reliable operator uptime requires a **local** node: `info.uptime` exposes two distinct percentages (`rewardingStakePercentage` vs `weightedAveragePercentage`) and only applies when the NodeID is this node. Public `info.uptime` is never treated as the configured validator. Optional `/ext/health` and `/ext/metrics` (polls, connected stake, peers) soft-fail. Custom Avalanche L1s are out of scope. Reward forfeiture is **not** principal slashing.
+
+Uptime requirement follows ACP-267: 80% before Helicon, 90% for periods starting at/after Helicon, or `AVALANCHE_UPTIME_THRESHOLD` (source is always labeled).
+
+```env
+CHAIN=avalanche
+DEMO_MODE=false
+AVALANCHE_RPC_URL=http://127.0.0.1:9650
+AVALANCHE_NODE_IDS=NodeID-...
+AVALANCHE_NETWORK=mainnet
+# Optional:
+# AVALANCHE_METRICS_URL=http://127.0.0.1:9650/ext/metrics
+# AVALANCHE_UPTIME_THRESHOLD=80
+ALERT_AVALANCHE_RUNWAY_HOURS=24
+```
+
+Live mode resolves NodeIDs to active Primary Network periods, scores connected stake and poll failures when local metrics exist, and warns before remaining slack cannot recover the threshold. Demo mode covers healthy, near-threshold, and forfeiture cases (AVAX / nAVAX).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -434,7 +454,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `bsc`, `aptos`, `sui`, `monad`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `bsc`, `aptos`, `sui`, `monad`, `avalanche`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -488,6 +508,12 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `MONAD_METRICS_URL` | Optional local Prometheus/OTel metrics URL | unset |
 | `MONAD_LEDGER_TAIL_PATH` | Optional read-only `monad-ledger-tail` JSON/NDJSON | unset |
 | `MONAD_STATUS_PATH` | Optional read-only `monad-status` JSON | unset |
+| `AVALANCHE_RPC_URL` | Avalanche node HTTP(S) base or P-Chain URL | unset |
+| `AVALANCHE_NODE_IDS` | Comma-separated `NodeID-…` validators | empty |
+| `AVALANCHE_NETWORK` | `mainnet` or `fuji` | `mainnet` |
+| `AVALANCHE_METRICS_URL` | Optional `/ext/metrics` override | derived from RPC origin |
+| `AVALANCHE_UPTIME_THRESHOLD` | Optional uptime % override; else ACP-267 Helicon 80/90 | unset |
+| `ALERT_AVALANCHE_RUNWAY_HOURS` | Warn when remaining recovery slack < N hours | `24` |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

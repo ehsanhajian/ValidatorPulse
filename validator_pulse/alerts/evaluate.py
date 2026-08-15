@@ -364,6 +364,45 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # Avalanche: reward forfeiture (not principal slashing); warn before recovery is impossible.
+        if snapshot.chain == "avalanche":
+            for event in v.protocol_events:
+                msg = event.message.lower()
+                if event.kind != "other" or event.severity == "info":
+                    continue
+                if (
+                    "forfeit" in msg
+                    or "cannot recover" in msg
+                    or "eligibility" in msg
+                    or "recovery slack" in msg
+                    or "not in the current primary" in msg
+                    or "benched" in msg
+                    or "polls" in msg
+                    or "not connected" in msg
+                ):
+                    title = "Elevated reward risk on validator {label}"
+                    if "cannot recover" in msg or (
+                        "forfeit" in msg and "impossible" in msg
+                    ):
+                        title = "Reward forfeiture risk on validator {label}"
+                    elif "recovery slack" in msg or "eligibility" in msg:
+                        title = "Uptime runway warning on validator {label}"
+                    elif "benched" in msg:
+                        title = "Validator benched: {label}"
+                    elif "not in the current primary" in msg:
+                        title = "Validator not in Primary Network set: {label}"
+                    alerts.append(
+                        AlertEvent(
+                            id=f"avax-reward-{label}-{now}",
+                            severity=event.severity,
+                            title=title.format(label=label),
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
         # Monad: reward/eligibility loss only — automated slashing is not implemented.
         if snapshot.chain == "monad":
             for event in v.protocol_events:

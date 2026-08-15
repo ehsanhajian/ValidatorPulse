@@ -112,6 +112,14 @@ def test_monad_adapter_is_registered() -> None:
     assert "monad" in list_implemented_chains()
 
 
+def test_avalanche_adapter_is_registered() -> None:
+    adapter = get_adapter("avalanche")
+    assert adapter.name == "avalanche"
+    assert adapter.operator_label == "validator"
+    assert adapter.risk_kind == "reward_loss"
+    assert "avalanche" in list_implemented_chains()
+
+
 def test_unknown_chain_lists_known_values() -> None:
     with pytest.raises(UnsupportedChainError, match="Known values"):
         get_adapter("bitcoin")
@@ -128,9 +136,9 @@ def test_unknown_chain_lists_known_values() -> None:
     assert "aptos" in known
     assert "sui" in known
     assert "monad" in known
-    assert "bsc" in list_implemented_chains()
-    assert "sui" in list_implemented_chains()
+    assert "avalanche" in known
     assert "monad" in list_implemented_chains()
+    assert "avalanche" in list_implemented_chains()
 
 
 def test_unimplemented_reserved_chains_cleared() -> None:
@@ -147,6 +155,7 @@ def test_unimplemented_reserved_chains_cleared() -> None:
         "aptos",
         "sui",
         "monad",
+        "avalanche",
     ):
         assert get_adapter(name).name == name
         assert name in list_implemented_chains()
