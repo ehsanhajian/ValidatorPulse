@@ -165,6 +165,13 @@ def resolve_reward_token(
             base_unit="wei",
         )
 
+    if chain_key == "avalanche":
+        return TokenInfo(
+            symbol=(symbol_override or "AVAX").upper(),
+            decimals=decimals_override if decimals_override is not None else 9,
+            base_unit="nAVAX",
+        )
+
     return TokenInfo(
         symbol=(symbol_override or "TOKEN").upper(),
         decimals=decimals_override if decimals_override is not None else 0,
