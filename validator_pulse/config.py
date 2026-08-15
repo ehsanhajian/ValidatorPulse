@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | bsc | aptos | sui | monad | avalanche (implemented).
+    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | bsc | aptos | sui | monad | avalanche | mina (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -92,6 +92,12 @@ class Settings(BaseSettings):
     avalanche_network: str = "mainnet"
     avalanche_metrics_url: str | None = None
     avalanche_uptime_threshold: float | None = None
+    # Mina block producers (local GraphQL + CLI/logs; optional archive)
+    mina_graphql_url: str | None = None
+    mina_producer_public_keys: str = ""
+    mina_client_command: str = "mina"
+    mina_archive_database_url: str | None = None
+    mina_log_path: str | None = None
     # Monad validators (EVM RPC staking precompile 0x1000 + optional local evidence)
     monad_rpc_url: str | None = None
     monad_validator_ids: str = ""
@@ -141,6 +147,7 @@ class Settings(BaseSettings):
     alert_aptos_failed_proposals: int = 3
     alert_sui_at_risk_epochs: int = 3
     alert_avalanche_runway_hours: float = 24
+    alert_mina_near_slot_slots: int = 2
     alert_disk_usage_above: float = 85
     alert_clock_drift_ms: float = 500
 
@@ -202,6 +209,9 @@ class Settings(BaseSettings):
         "bsc_stake_hub_contract",
         "avalanche_rpc_url",
         "avalanche_metrics_url",
+        "mina_graphql_url",
+        "mina_archive_database_url",
+        "mina_log_path",
         "monad_rpc_url",
         "monad_metrics_url",
         "monad_ledger_tail_path",
@@ -293,6 +303,9 @@ class Settings(BaseSettings):
     def avalanche_node_id_list(self) -> list[str]:
         return _split_csv(self.avalanche_node_ids)
 
+    def mina_producer_public_key_list(self) -> list[str]:
+        return _split_csv(self.mina_producer_public_keys)
+
     def monad_validator_id_list(self) -> list[int]:
         values: list[int] = []
         for part in _split_csv(self.monad_validator_ids):
@@ -349,6 +362,8 @@ class Settings(BaseSettings):
             return not bool(self.bsc_rpc_url and self.bsc_rpc_url.strip())
         if chain == "avalanche":
             return not bool(self.avalanche_rpc_url and self.avalanche_rpc_url.strip())
+        if chain == "mina":
+            return not bool(self.mina_graphql_url and self.mina_graphql_url.strip())
         if chain == "monad":
             return not bool(self.monad_rpc_url and self.monad_rpc_url.strip())
         return False

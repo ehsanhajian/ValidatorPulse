@@ -165,3 +165,12 @@ def test_avalanche_token_defaults() -> None:
     assert avax.base_unit == "nAVAX"
     text = format_token_amount(2 * 10**9, avax)
     assert "AVAX" in text
+
+
+def test_mina_token_defaults() -> None:
+    mina = resolve_reward_token(chain="mina")
+    assert mina.symbol == "MINA"
+    assert mina.decimals == 9
+    assert mina.base_unit == "nanomina"
+    text = format_token_amount(2 * 10**9, mina)
+    assert "MINA" in text

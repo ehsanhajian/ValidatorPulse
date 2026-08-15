@@ -403,6 +403,40 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # Mina: reward/operational loss only — protocol does not slash producer stake.
+        if snapshot.chain == "mina":
+            for event in v.protocol_events:
+                msg = event.message.lower()
+                if event.kind != "other" or event.severity == "info":
+                    continue
+                if (
+                    "unsynced" in msg
+                    or "missed" in msg
+                    or "orphan" in msg
+                    or "not in this daemon" in msg
+                    or "recovering" in msg
+                ):
+                    title = "Elevated reward risk on block producer {label}"
+                    if "unsynced" in msg:
+                        title = "Daemon unsynced near won slot: {label}"
+                    elif "missed" in msg:
+                        title = "Missed won slot on block producer {label}"
+                    elif "orphan" in msg:
+                        title = "Orphaned block on producer {label}"
+                    elif "recovering" in msg:
+                        title = "Block producer recovering: {label}"
+                    alerts.append(
+                        AlertEvent(
+                            id=f"mina-reward-{label}-{now}",
+                            severity=event.severity,
+                            title=title.format(label=label),
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+
         # Monad: reward/eligibility loss only — automated slashing is not implemented.
         if snapshot.chain == "monad":
             for event in v.protocol_events:

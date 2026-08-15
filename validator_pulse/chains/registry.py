@@ -52,6 +52,7 @@ def _load_builtin_adapters() -> None:
     from validator_pulse.chains.cardano.adapter import CardanoAdapter
     from validator_pulse.chains.cosmos.adapter import CosmosAdapter
     from validator_pulse.chains.ethereum.adapter import EthereumAdapter
+    from validator_pulse.chains.mina.adapter import MinaAdapter
     from validator_pulse.chains.monad.adapter import MonadAdapter
     from validator_pulse.chains.near.adapter import NearAdapter
     from validator_pulse.chains.polkadot.adapter import PolkadotAdapter
@@ -72,6 +73,7 @@ def _load_builtin_adapters() -> None:
     register_adapter("sui", SuiAdapter)
     register_adapter("monad", MonadAdapter)
     register_adapter("avalanche", AvalancheAdapter)
+    register_adapter("mina", MinaAdapter)
 
 
 _load_builtin_adapters()

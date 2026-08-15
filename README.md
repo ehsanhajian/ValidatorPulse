@@ -46,7 +46,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `sui` | Implemented | Sui validators via GraphQL + optional local Prometheus (proposals, atRisk, reports) |
 | `monad` | Implemented | Monad validators via EVM RPC staking precompile `0x1000` (set, epoch, local duties) |
 | `avalanche` | Implemented | Avalanche Primary Network validators via P-Chain + local info/metrics (uptime, runway) |
-| `mina` | Planned | [#32](https://github.com/ehsanhajian/ValidatorPulse/issues/32) |
+| `mina` | Implemented | Mina block producers via local GraphQL + CLI/logs (won slots, orphaning, rewards) |
 | `multiversx` | Planned | [#33](https://github.com/ehsanhajian/ValidatorPulse/issues/33) |
 | `ton` | Planned | [#34](https://github.com/ehsanhajian/ValidatorPulse/issues/34) |
 
@@ -373,6 +373,24 @@ ALERT_AVALANCHE_RUNWAY_HOURS=24
 
 Live mode resolves NodeIDs to active Primary Network periods, scores connected stake and poll failures when local metrics exist, and warns before remaining slack cannot recover the threshold. Demo mode covers healthy, near-threshold, and forfeiture cases (AVAX / nAVAX).
 
+### Mina
+
+Monitor **block producers** by `B62…` public key. Correlate locally won private VRF slots (read-only `mina client status` and/or daemon logs) with canonical blocks from local GraphQL `bestChain` / `daemonStatus`. Optional archive JSON or `postgres://` DSN supplies durable history — the GraphQL frontier is only the last ~`k` blocks. Public GraphQL cannot enumerate another producer’s private duties; without local CLI/log evidence, expected duties stay unknown. The adapter is **query-only** (the full GraphQL endpoint can submit transactions). Mina does **not** slash producer stake — labels use reward risk only.
+
+```env
+CHAIN=mina
+DEMO_MODE=false
+MINA_GRAPHQL_URL=http://127.0.0.1:3085/graphql
+MINA_PRODUCER_PUBLIC_KEYS=B62q...
+MINA_CLIENT_COMMAND=mina
+# Optional:
+# MINA_ARCHIVE_DATABASE_URL=postgres://...
+# MINA_LOG_PATH=/var/log/mina/mina.log
+ALERT_MINA_NEAR_SLOT_SLOTS=2
+```
+
+Live mode surfaces sync, peers, producer activation, tip height, and freshness lag. Won slots classify as canonical, orphaned, missed, or pending. Near-slot unsynced/inactive state is critical. Demo mode covers schedule, orphan, miss, unsynced, and recovery (MINA / nanomina).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -454,7 +472,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `bsc`, `aptos`, `sui`, `monad`, `avalanche`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `bsc`, `aptos`, `sui`, `monad`, `avalanche`, `mina`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -514,6 +532,12 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `AVALANCHE_METRICS_URL` | Optional `/ext/metrics` override | derived from RPC origin |
 | `AVALANCHE_UPTIME_THRESHOLD` | Optional uptime % override; else ACP-267 Helicon 80/90 | unset |
 | `ALERT_AVALANCHE_RUNWAY_HOURS` | Warn when remaining recovery slack < N hours | `24` |
+| `MINA_GRAPHQL_URL` | Local Mina daemon GraphQL HTTP endpoint | unset |
+| `MINA_PRODUCER_PUBLIC_KEYS` | Comma-separated `B62…` block-producer keys | empty |
+| `MINA_CLIENT_COMMAND` | Read-only `mina client status` binary | `mina` |
+| `MINA_ARCHIVE_DATABASE_URL` | Optional archive JSON path or `postgres://` DSN | unset |
+| `MINA_LOG_PATH` | Optional daemon log path (won slots / produced blocks) | unset |
+| `ALERT_MINA_NEAR_SLOT_SLOTS` | Critical when unsynced within N slots of a win | `2` |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

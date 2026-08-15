@@ -120,6 +120,14 @@ def test_avalanche_adapter_is_registered() -> None:
     assert "avalanche" in list_implemented_chains()
 
 
+def test_mina_adapter_is_registered() -> None:
+    adapter = get_adapter("mina")
+    assert adapter.name == "mina"
+    assert adapter.operator_label == "block producer"
+    assert adapter.risk_kind == "reward_loss"
+    assert "mina" in list_implemented_chains()
+
+
 def test_unknown_chain_lists_known_values() -> None:
     with pytest.raises(UnsupportedChainError, match="Known values"):
         get_adapter("bitcoin")
@@ -137,8 +145,10 @@ def test_unknown_chain_lists_known_values() -> None:
     assert "sui" in known
     assert "monad" in known
     assert "avalanche" in known
+    assert "mina" in known
     assert "monad" in list_implemented_chains()
     assert "avalanche" in list_implemented_chains()
+    assert "mina" in list_implemented_chains()
 
 
 def test_unimplemented_reserved_chains_cleared() -> None:
@@ -156,6 +166,7 @@ def test_unimplemented_reserved_chains_cleared() -> None:
         "sui",
         "monad",
         "avalanche",
+        "mina",
     ):
         assert get_adapter(name).name == name
         assert name in list_implemented_chains()
