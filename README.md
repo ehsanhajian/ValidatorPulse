@@ -47,7 +47,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `monad` | Implemented | Monad validators via EVM RPC staking precompile `0x1000` (set, epoch, local duties) |
 | `avalanche` | Implemented | Avalanche Primary Network validators via P-Chain + local info/metrics (uptime, runway) |
 | `mina` | Implemented | Mina block producers via local GraphQL + CLI/logs (won slots, orphaning, rewards) |
-| `multiversx` | Planned | [#33](https://github.com/ehsanhajian/ValidatorPulse/issues/33) |
+| `multiversx` | Implemented | MultiversX validators via node APIs + gateway heartbeat (rating, jail vs slash) |
 | `ton` | Planned | [#34](https://github.com/ehsanhajian/ValidatorPulse/issues/34) |
 
 Shared models were generalized for heterogeneous L1s in [#35](https://github.com/ehsanhajian/ValidatorPulse/issues/35). Packaging (Docker / Caddy) is tracked in [#9](https://github.com/ehsanhajian/ValidatorPulse/issues/9).
@@ -391,6 +391,23 @@ ALERT_MINA_NEAR_SLOT_SLOTS=2
 
 Live mode surfaces sync, peers, producer activation, tip height, and freshness lag. Won slots classify as canonical, orphaned, missed, or pending. Near-slot unsynced/inactive state is critical. Demo mode covers schedule, orphan, miss, unsynced, and recovery (MINA / nanomina).
 
+### MultiversX
+
+Monitor validators by **192-hex BLS key** via gateway `/node/heartbeatstatus` and `/validator/statistics`, plus local `/node/status`, `/node/p2pstatus`, and `/node/peerinfo` when configured. Each key on a multikey host is scored independently. Jail from low rating (epoch boundary, threshold labeled from `/network/ratings` or docs) is distinct from serious-offence stake slashing. Recently unjailed validators stay **waiting/passive** while recovering.
+
+```env
+CHAIN=multiversx
+DEMO_MODE=false
+MULTIVERSX_NODE_API_URL=http://127.0.0.1:8080
+MULTIVERSX_GATEWAY_URL=https://gateway.multiversx.com
+MULTIVERSX_VALIDATOR_BLS_KEYS=<192-hex-key>
+# MULTIVERSX_SHARD_ID=0
+# MULTIVERSX_JAIL_RATING_THRESHOLD=10
+ALERT_MULTIVERSX_RATING_BELOW=20
+```
+
+Live mode surfaces heartbeat, shard/state, sync, epoch/round, peers, version, and freshness. Proposal/signature counters and rating feed scoring when the gateway or local node exposes them. Demo mode covers healthy, degrading, jailed, and unjail recovery (EGLD / wei).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -472,7 +489,7 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `bsc`, `aptos`, `sui`, `monad`, `avalanche`, `mina`, …) | `ethereum` |
+| `CHAIN` | Active adapter (`ethereum`, `polkadot`, `polkadot-relay`, `cosmos`, `solana`, `near`, `cardano`, `tezos`, `algorand`, `bsc`, `aptos`, `sui`, `monad`, `avalanche`, `mina`, `multiversx`, …) | `ethereum` |
 | `POLKADOT_ROLE` | `collator` or `validator` (ignored when `CHAIN=polkadot-relay`) | `collator` |
 | `BEACON_API_URL` | Ethereum consensus HTTP(S) API (any host/port) | unset |
 | `VALIDATOR_INDICES` / `VALIDATOR_PUBKEYS` | Ethereum operators | `1,2,3` / empty |
@@ -538,6 +555,12 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `MINA_ARCHIVE_DATABASE_URL` | Optional archive JSON path or `postgres://` DSN | unset |
 | `MINA_LOG_PATH` | Optional daemon log path (won slots / produced blocks) | unset |
 | `ALERT_MINA_NEAR_SLOT_SLOTS` | Critical when unsynced within N slots of a win | `2` |
+| `MULTIVERSX_NODE_API_URL` | Local observer `/node/*` HTTP base | unset |
+| `MULTIVERSX_GATEWAY_URL` | Gateway HTTP base (heartbeat, statistics, network) | unset |
+| `MULTIVERSX_VALIDATOR_BLS_KEYS` | Comma-separated 192-hex BLS public keys | empty |
+| `MULTIVERSX_SHARD_ID` | Optional shard for `/network/status` (`4294967295` = metachain) | unset |
+| `MULTIVERSX_JAIL_RATING_THRESHOLD` | Optional jail rating override; else network ratings / docs 10 | unset |
+| `ALERT_MULTIVERSX_RATING_BELOW` | Critical when rating ≤ N (near jail) | `20` |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

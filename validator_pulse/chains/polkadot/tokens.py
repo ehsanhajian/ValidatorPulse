@@ -179,6 +179,13 @@ def resolve_reward_token(
             base_unit="nanomina",
         )
 
+    if chain_key == "multiversx":
+        return TokenInfo(
+            symbol=(symbol_override or "EGLD").upper(),
+            decimals=decimals_override if decimals_override is not None else 18,
+            base_unit="wei",
+        )
+
     return TokenInfo(
         symbol=(symbol_override or "TOKEN").upper(),
         decimals=decimals_override if decimals_override is not None else 0,
