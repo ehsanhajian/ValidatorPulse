@@ -48,7 +48,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `avalanche` | Implemented | Avalanche Primary Network validators via P-Chain + local info/metrics (uptime, runway) |
 | `mina` | Implemented | Mina block producers via local GraphQL + CLI/logs (won slots, orphaning, rewards) |
 | `multiversx` | Implemented | MultiversX validators via node APIs + gateway heartbeat (rating, jail vs slash) |
-| `ton` | Planned | [#34](https://github.com/ehsanhajian/ValidatorPulse/issues/34) |
+| `ton` | Implemented | TON validators via Validation API + QoS catchain efficiency (fines, elections, ADNL history) |
 
 Shared models were generalized for heterogeneous L1s in [#35](https://github.com/ehsanhajian/ValidatorPulse/issues/35). Packaging (Docker / Caddy) is tracked in [#9](https://github.com/ehsanhajian/ValidatorPulse/issues/9).
 
@@ -408,6 +408,25 @@ ALERT_MULTIVERSX_RATING_BELOW=20
 
 Live mode surfaces heartbeat, shard/state, sync, epoch/round, peers, version, and freshness. Proposal/signature counters and rating feed scoring when the gateway or local node exposes them. Demo mode covers healthy, degrading, jailed, and unjail recovery (EGLD / wei).
 
+### TON
+
+Monitor validators by **64-hex ADNL** identity. Public [Validation API](https://elections.toncenter.com/docs) (`/getValidationCycles`, `/getElections`) supplies round membership, stake, index, complaints and election entries. Catchain efficiency comes from TON Center [QoS `cycleScoreboard`](https://toncenter.com/api/qos/index.html) (schema pinned: `efficiency` / `efficiency_mc` / `efficiency_wc` may be **null** — that is not treated as 0%). Optional local **MyTonCtrl** (`status`, `vl`, `cl`, `el`, `check_ef`) is read-only, argument-safe, and never uses a shell. Optional Prometheus scrapes MyTonCtrl gauges (`validator_masterchain_out_of_sync_seconds`, `validator_console_up`, …). ADNL rotation keeps a time-bounded history window. Completed rounds below the labeled 90% policy (docs, overridable) alert; complaints/fines are **fine risk**, not Ethereum-style principal slashing. Zero efficiency at round start is ignored.
+
+```env
+CHAIN=ton
+DEMO_MODE=false
+TON_VALIDATION_API_URL=https://elections.toncenter.com
+TON_ADNL_ADDRESSES=<64-hex-adnl>
+# TON_QOS_API_URL=https://toncenter.com
+# TON_PROMETHEUS_URL=http://127.0.0.1:9091/metrics
+# TON_MYTONCTRL_COMMAND=mytonctrl
+TON_NETWORK=mainnet
+# TON_EFFICIENCY_THRESHOLD=90
+ALERT_TON_EFFICIENCY_BELOW=90
+```
+
+Live mode surfaces efficiency, sync lag, validator index (masterchain if `< 100`), election state and source freshness. Demo mode covers healthy, degrading, fined, and recovery rounds (TON / nanoton).
+
 ### Add a chain plugin
 
 1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
@@ -561,6 +580,14 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `MULTIVERSX_SHARD_ID` | Optional shard for `/network/status` (`4294967295` = metachain) | unset |
 | `MULTIVERSX_JAIL_RATING_THRESHOLD` | Optional jail rating override; else network ratings / docs 10 | unset |
 | `ALERT_MULTIVERSX_RATING_BELOW` | Critical when rating ≤ N (near jail) | `20` |
+| `TON_VALIDATION_API_URL` | TON Validation API base (`/getValidationCycles`, `/getElections`) | unset |
+| `TON_ADNL_ADDRESSES` | Comma-separated 64-hex ADNL identities | empty |
+| `TON_QOS_API_URL` | Optional QoS base (`/api/qos/cycleScoreboard`); derived from Toncenter elections host | unset |
+| `TON_PROMETHEUS_URL` | Optional MyTonCtrl/Pushgateway scrape URL | unset |
+| `TON_MYTONCTRL_COMMAND` | Local read-only MyTonCtrl binary | `mytonctrl` |
+| `TON_NETWORK` | `mainnet` or `testnet` (label only) | `mainnet` |
+| `TON_EFFICIENCY_THRESHOLD` | Optional completed-round efficiency override; else docs 90% | unset |
+| `ALERT_TON_EFFICIENCY_BELOW` | Alert wording companion for the 90% policy | `90` |
 | `RPC_TLS_VERIFY` | Verify TLS certs for `https://` RPC URLs | `true` |
 | `RPC_TLS_CA_BUNDLE` | Optional CA file path for private PKI | unset |
 | `RPC_TLS_INSECURE` | Disable TLS verify (lab only) | `false` |

@@ -183,3 +183,12 @@ def test_multiversx_token_defaults() -> None:
     assert egld.base_unit == "wei"
     text = format_token_amount(2 * 10**18, egld)
     assert "EGLD" in text
+
+
+def test_ton_token_defaults() -> None:
+    ton = resolve_reward_token(chain="ton")
+    assert ton.symbol == "TON"
+    assert ton.decimals == 9
+    assert ton.base_unit == "nanoton"
+    text = format_token_amount(2 * 10**9, ton)
+    assert "TON" in text

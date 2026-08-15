@@ -136,6 +136,14 @@ def test_multiversx_adapter_is_registered() -> None:
     assert "multiversx" in list_implemented_chains()
 
 
+def test_ton_adapter_is_registered() -> None:
+    adapter = get_adapter("ton")
+    assert adapter.name == "ton"
+    assert adapter.operator_label == "validator"
+    assert adapter.risk_kind == "operational"
+    assert "ton" in list_implemented_chains()
+
+
 def test_unknown_chain_lists_known_values() -> None:
     with pytest.raises(UnsupportedChainError, match="Known values"):
         get_adapter("bitcoin")
@@ -155,8 +163,10 @@ def test_unknown_chain_lists_known_values() -> None:
     assert "avalanche" in known
     assert "mina" in known
     assert "multiversx" in known
+    assert "ton" in known
     assert "mina" in list_implemented_chains()
     assert "multiversx" in list_implemented_chains()
+    assert "ton" in list_implemented_chains()
 
 
 def test_unimplemented_reserved_chains_cleared() -> None:
@@ -176,6 +186,7 @@ def test_unimplemented_reserved_chains_cleared() -> None:
         "avalanche",
         "mina",
         "multiversx",
+        "ton",
     ):
         assert get_adapter(name).name == name
         assert name in list_implemented_chains()

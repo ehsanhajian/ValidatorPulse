@@ -493,6 +493,51 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                             )
                         )
 
+        # TON: complaints/fines and completed rounds below the labeled 90% policy.
+        if snapshot.chain == "ton":
+            for event in v.protocol_events:
+                if event.kind == "fined":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"ton-fine-{label}-{now}",
+                            severity="critical",
+                            title=f"Validator fined: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "other" and event.severity != "info":
+                    msg = event.message.lower()
+                    if (
+                        "efficiency" in msg
+                        or "election" in msg
+                        or "lag" in msg
+                        or "rotated" in msg
+                        or "recovering" in msg
+                    ):
+                        title = "Elevated fine risk on validator {label}"
+                        if "below" in msg or "efficiency" in msg:
+                            title = "Completed round below efficiency threshold: {label}"
+                        elif "election" in msg:
+                            title = "Missed TON election: {label}"
+                        elif "lag" in msg:
+                            title = "Severe TON sync lag: {label}"
+                        elif "rotated" in msg or "recovering" in msg:
+                            title = "Validator recovering after ADNL rotation: {label}"
+                        alerts.append(
+                            AlertEvent(
+                                id=f"ton-ops-{label}-{now}",
+                                severity=event.severity,
+                                title=title.format(label=label),
+                                message=event.message,
+                                source="validator",
+                                created_at=now,
+                                channels=channels,
+                            )
+                        )
+
         # Monad: reward/eligibility loss only — automated slashing is not implemented.
         if snapshot.chain == "monad":
             for event in v.protocol_events:

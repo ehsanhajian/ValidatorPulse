@@ -46,6 +46,7 @@ ProtocolEventKind = Literal[
     "delinquent",
     "high_skip_rate",
     "rpc_error",
+    "fined",
     "other",
 ]
 

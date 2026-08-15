@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | bsc | aptos | sui | monad | avalanche | mina | multiversx (implemented).
+    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | bsc | aptos | sui | monad | avalanche | mina | multiversx | ton (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -104,6 +104,14 @@ class Settings(BaseSettings):
     multiversx_validator_bls_keys: str = ""
     multiversx_shard_id: int | None = None
     multiversx_jail_rating_threshold: float | None = None
+    # TON validators (Validation API + QoS catchain efficiency; optional MyTonCtrl/Prometheus)
+    ton_adnl_addresses: str = ""
+    ton_validation_api_url: str | None = None
+    ton_qos_api_url: str | None = None
+    ton_prometheus_url: str | None = None
+    ton_mytonctrl_command: str = "mytonctrl"
+    ton_network: str = "mainnet"
+    ton_efficiency_threshold: float | None = None
     # Monad validators (EVM RPC staking precompile 0x1000 + optional local evidence)
     monad_rpc_url: str | None = None
     monad_validator_ids: str = ""
@@ -155,6 +163,7 @@ class Settings(BaseSettings):
     alert_avalanche_runway_hours: float = 24
     alert_mina_near_slot_slots: int = 2
     alert_multiversx_rating_below: float = 20
+    alert_ton_efficiency_below: float = 90
     alert_disk_usage_above: float = 85
     alert_clock_drift_ms: float = 500
 
@@ -175,6 +184,7 @@ class Settings(BaseSettings):
         "avalanche_uptime_threshold",
         "multiversx_shard_id",
         "multiversx_jail_rating_threshold",
+        "ton_efficiency_threshold",
         mode="before",
     )
     @classmethod
@@ -223,6 +233,9 @@ class Settings(BaseSettings):
         "mina_log_path",
         "multiversx_node_api_url",
         "multiversx_gateway_url",
+        "ton_validation_api_url",
+        "ton_qos_api_url",
+        "ton_prometheus_url",
         "monad_rpc_url",
         "monad_metrics_url",
         "monad_ledger_tail_path",
@@ -320,6 +333,9 @@ class Settings(BaseSettings):
     def multiversx_bls_key_list(self) -> list[str]:
         return _split_csv(self.multiversx_validator_bls_keys)
 
+    def ton_adnl_list(self) -> list[str]:
+        return _split_csv(self.ton_adnl_addresses)
+
     def monad_validator_id_list(self) -> list[int]:
         values: list[int] = []
         for part in _split_csv(self.monad_validator_ids):
@@ -382,6 +398,10 @@ class Settings(BaseSettings):
             node = bool(self.multiversx_node_api_url and self.multiversx_node_api_url.strip())
             gateway = bool(self.multiversx_gateway_url and self.multiversx_gateway_url.strip())
             return not (node or gateway)
+        if chain == "ton":
+            api = bool(self.ton_validation_api_url and self.ton_validation_api_url.strip())
+            prom = bool(self.ton_prometheus_url and self.ton_prometheus_url.strip())
+            return not (api or prom)
         if chain == "monad":
             return not bool(self.monad_rpc_url and self.monad_rpc_url.strip())
         return False
