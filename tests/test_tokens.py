@@ -174,3 +174,12 @@ def test_mina_token_defaults() -> None:
     assert mina.base_unit == "nanomina"
     text = format_token_amount(2 * 10**9, mina)
     assert "MINA" in text
+
+
+def test_multiversx_token_defaults() -> None:
+    egld = resolve_reward_token(chain="multiversx")
+    assert egld.symbol == "EGLD"
+    assert egld.decimals == 18
+    assert egld.base_unit == "wei"
+    text = format_token_amount(2 * 10**18, egld)
+    assert "EGLD" in text

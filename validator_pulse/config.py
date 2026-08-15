@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     beacon_api_url: str | None = None
-    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | bsc | aptos | sui | monad | avalanche | mina (implemented).
+    # Active chain plugin: ethereum | polkadot | cosmos | solana | near | cardano | tezos | algorand | bsc | aptos | sui | monad | avalanche | mina | multiversx (implemented).
     chain: str = "ethereum"
     # Numeric beacon indices, e.g. 123456,789012
     validator_indices: str = "1,2,3"
@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     mina_client_command: str = "mina"
     mina_archive_database_url: str | None = None
     mina_log_path: str | None = None
+    # MultiversX validators (local node APIs + gateway heartbeat/statistics)
+    multiversx_node_api_url: str | None = None
+    multiversx_gateway_url: str | None = None
+    multiversx_validator_bls_keys: str = ""
+    multiversx_shard_id: int | None = None
+    multiversx_jail_rating_threshold: float | None = None
     # Monad validators (EVM RPC staking precompile 0x1000 + optional local evidence)
     monad_rpc_url: str | None = None
     monad_validator_ids: str = ""
@@ -148,6 +154,7 @@ class Settings(BaseSettings):
     alert_sui_at_risk_epochs: int = 3
     alert_avalanche_runway_hours: float = 24
     alert_mina_near_slot_slots: int = 2
+    alert_multiversx_rating_below: float = 20
     alert_disk_usage_above: float = 85
     alert_clock_drift_ms: float = 500
 
@@ -166,6 +173,8 @@ class Settings(BaseSettings):
         "bsc_misdemeanor_threshold",
         "bsc_felony_threshold",
         "avalanche_uptime_threshold",
+        "multiversx_shard_id",
+        "multiversx_jail_rating_threshold",
         mode="before",
     )
     @classmethod
@@ -212,6 +221,8 @@ class Settings(BaseSettings):
         "mina_graphql_url",
         "mina_archive_database_url",
         "mina_log_path",
+        "multiversx_node_api_url",
+        "multiversx_gateway_url",
         "monad_rpc_url",
         "monad_metrics_url",
         "monad_ledger_tail_path",
@@ -306,6 +317,9 @@ class Settings(BaseSettings):
     def mina_producer_public_key_list(self) -> list[str]:
         return _split_csv(self.mina_producer_public_keys)
 
+    def multiversx_bls_key_list(self) -> list[str]:
+        return _split_csv(self.multiversx_validator_bls_keys)
+
     def monad_validator_id_list(self) -> list[int]:
         values: list[int] = []
         for part in _split_csv(self.monad_validator_ids):
@@ -364,6 +378,10 @@ class Settings(BaseSettings):
             return not bool(self.avalanche_rpc_url and self.avalanche_rpc_url.strip())
         if chain == "mina":
             return not bool(self.mina_graphql_url and self.mina_graphql_url.strip())
+        if chain == "multiversx":
+            node = bool(self.multiversx_node_api_url and self.multiversx_node_api_url.strip())
+            gateway = bool(self.multiversx_gateway_url and self.multiversx_gateway_url.strip())
+            return not (node or gateway)
         if chain == "monad":
             return not bool(self.monad_rpc_url and self.monad_rpc_url.strip())
         return False

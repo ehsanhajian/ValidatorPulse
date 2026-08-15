@@ -437,6 +437,62 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
+        # MultiversX: downtime jail vs serious-offence slash; rating near jail is critical.
+        if snapshot.chain == "multiversx":
+            for event in v.protocol_events:
+                if event.kind == "slashed":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"mx-slash-{label}-{now}",
+                            severity="critical",
+                            title=f"Validator slashed: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "jailed":
+                    alerts.append(
+                        AlertEvent(
+                            id=f"mx-jail-{label}-{now}",
+                            severity="critical",
+                            title=f"Validator jailed: {label}",
+                            message=event.message,
+                            source="validator",
+                            created_at=now,
+                            channels=channels,
+                        )
+                    )
+                elif event.kind == "other" and event.severity != "info":
+                    msg = event.message.lower()
+                    if (
+                        "near" in msg
+                        or "jail" in msg
+                        or "unjail" in msg
+                        or "passive" in msg
+                        or "inactive" in msg
+                        or "not found" in msg
+                    ):
+                        title = "Elevated jail risk on validator {label}"
+                        if "near" in msg or "threshold" in msg:
+                            title = "Rating near jail threshold: {label}"
+                        elif "passive" in msg or "unjail" in msg or "waiting" in msg:
+                            title = "Validator recovering after unjail: {label}"
+                        elif "inactive" in msg:
+                            title = "Heartbeat inactive on validator {label}"
+                        alerts.append(
+                            AlertEvent(
+                                id=f"mx-rating-{label}-{now}",
+                                severity=event.severity,
+                                title=title.format(label=label),
+                                message=event.message,
+                                source="validator",
+                                created_at=now,
+                                channels=channels,
+                            )
+                        )
+
         # Monad: reward/eligibility loss only — automated slashing is not implemented.
         if snapshot.chain == "monad":
             for event in v.protocol_events:
