@@ -60,6 +60,7 @@ def _load_builtin_adapters() -> None:
     from validator_pulse.chains.solana.adapter import SolanaAdapter
     from validator_pulse.chains.sui.adapter import SuiAdapter
     from validator_pulse.chains.tezos.adapter import TezosAdapter
+    from validator_pulse.chains.ton.adapter import TonAdapter
 
     register_adapter("ethereum", EthereumAdapter)
     register_adapter("polkadot", PolkadotAdapter)
@@ -76,6 +77,7 @@ def _load_builtin_adapters() -> None:
     register_adapter("avalanche", AvalancheAdapter)
     register_adapter("mina", MinaAdapter)
     register_adapter("multiversx", MultiversXAdapter)
+    register_adapter("ton", TonAdapter)
 
 
 _load_builtin_adapters()
