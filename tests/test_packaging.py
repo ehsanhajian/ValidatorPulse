@@ -29,8 +29,33 @@ def test_pages_landing_covers_acceptance() -> None:
     assert "Ethereum" in html and "Polkadot" in html and "Cosmos" in html and "Solana" in html
     assert "images/dashboard-ethereum.png" in html
     assert "github.com/ehsanhajian/ValidatorPulse#installation" in html
+    assert "git clone" in html
+    assert "pip install -e ." in html
+    assert "pypi.org/project/validator-pulse" not in html
     assert (REPO / "docs" / "images" / "dashboard-ethereum.png").is_file()
     assert (REPO / "docs" / ".nojekyll").exists()
+
+
+def test_readme_install_is_clone_first() -> None:
+    text = (REPO / "README.md").read_text()
+    install = text.split("## Installation", 1)[1].split("## What it monitors", 1)[0]
+    assert "git clone https://github.com/ehsanhajian/ValidatorPulse.git" in install
+    assert "pip install -e ." in install
+    assert "cp .env.example .env.local" in install
+    assert "cp compose.env.example .env" in install
+    assert "host.docker.internal" in install
+    assert "not available yet" in install
+    assert "pip install validator-pulse" in install
+
+
+def test_env_example_lists_every_implemented_chain() -> None:
+    from validator_pulse.chains import list_implemented_chains
+
+    header = (REPO / ".env.example").read_text().split("CHAIN=", 1)[0]
+    for chain in list_implemented_chains():
+        assert chain in header, f"{chain} missing from .env.example header"
+    assert "polkadot-relay" in header
+    assert "cosmoshub" in header and "celestia" in header
 
 
 def test_pyproject_has_discoverability_metadata() -> None:
