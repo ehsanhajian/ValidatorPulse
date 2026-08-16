@@ -479,50 +479,6 @@ ALERT_TON_EFFICIENCY_BELOW=90
 
 Live mode surfaces efficiency, sync lag, validator index (masterchain if `< 100`), election state and source freshness. Demo mode covers healthy, degrading, fined, and recovery rounds (TON / nanoton).
 
-### Add a chain plugin
-
-1. Implement `ChainAdapter` in `validator_pulse/chains/<name>/adapter.py`
-2. Register it in `validator_pulse/chains/registry.py`
-3. Add settings to `Settings` / `.env.example`
-4. Keep infrastructure, alerting, and Prometheus outside the adapter
-
-```python
-class ChainAdapter(Protocol):
-    name: str
-    display_name: str
-    operator_label: str
-    risk_kind: str          # slashing | kickout | jail | … 
-    risk_label: str         # UI / alert wording
-    primary_duty_label: str
-    secondary_duty_label: str
-    missed_duty_label: str
-    consensus_node_label: str
-
-    def is_demo(self, settings: Settings) -> bool: ...
-    async def collect(...) -> ChainCollection: ...
-```
-
-## Operator model & API migration
-
-`GET /api/status` snapshots use `schema_version: 2`. Canonical fields:
-
-| Concept | Canonical | Compatibility aliases |
-| --- | --- | --- |
-| Identity | `operator_id` (string) | optional `operator_index` / legacy `index` |
-| Balances & rewards | `*_base_units` + token metadata on the snapshot | `*_gwei` (same integer; name is historical) |
-| Duties | `duties[]` with category + label | `attestations` / `proposals` |
-| Risk | `risk_score` + `risk_kind` | `slashing_risk_score` |
-| Protocol incidents | `protocol_events[]` | — |
-
-`OperatorStats` is an alias of `ValidatorStats`. Ethereum and Polkadot behavior is unchanged for existing clients that still read the aliases.
-
-Prometheus dual-emits:
-
-- **Legacy:** `validator_*`, `validator_balance_gwei`, `validator_rewards_gwei`, …
-- **Preferred:** `operator_*` with `chain` / `operator_id` (and `risk_kind` / token labels where relevant)
-
-Prefer the `operator_*` series for new scrapes; legacy names remain so existing dashboards do not break abruptly.
-
 ## Web panel authentication
 
 Auth is **optional** (off when unset) so local demos stay frictionless. Set both username and password to protect the dashboard and APIs with HTTP Basic Auth:
@@ -685,6 +641,8 @@ curl -X POST http://127.0.0.1/api/alerts/test
 ```
 
 ## Metrics & API
+
+`GET /api/status` is `schema_version: 2` (`operator_id`, `*_base_units`, `duties`, `risk_score`). Prometheus emits both `operator_*` (preferred; labeled with `chain` / `operator_id`) and legacy `validator_*` so existing scrapes keep working. `*_gwei` is a historical alias for the same integer as `*_base_units`.
 
 ```text
 GET /api/metrics
