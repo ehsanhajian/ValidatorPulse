@@ -130,7 +130,7 @@ def build_demo_validators(
                     kind="fined",
                     severity="critical",
                     message=(
-                        "Confirmed complaint/fine 101 TON for low catchain participation. "
+                        "Confirmed complaint/fine 101 GRAM for low catchain participation. "
                         "Operational fine risk, not Ethereum-style principal slashing."
                     ),
                     confirmed=True,

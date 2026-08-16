@@ -213,7 +213,7 @@ def test_ton_demo_collect_and_alerts() -> None:
     assert any(e.kind == "fined" for e in fined.protocol_events)
     snapshot = asyncio.run(collect_pulse(settings, dispatch_alerts=False))
     assert snapshot.chain == "ton"
-    assert snapshot.reward_token_symbol == "TON"
+    assert snapshot.reward_token_symbol == "GRAM"
     assert snapshot.risk_kind == "operational"
     alerts = evaluate_alerts(snapshot, settings)
     titles = [a.title.lower() for a in alerts]
@@ -254,7 +254,7 @@ def test_ton_prometheus_labels() -> None:
         secondary_duty_label="Catchain efficiency",
         missed_duty_label="Low-efficiency rounds",
         consensus_node_label="TON validator",
-        reward_token_symbol="TON",
+        reward_token_symbol="GRAM",
         reward_token_decimals=9,
         reward_token_base_unit="nanoton",
         verdict={"status": "degraded", "answer": "x", "summary": "y"},
