@@ -5,8 +5,34 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "validator-pulse"
 version = "0.1.0"
-description = "Keep blockchain validators healthy and prevent downtime and slashing."
+description = "Self-hosted validator monitoring for Ethereum, Polkadot, Cosmos, Solana, and more — Prometheus metrics and multi-channel alerts."
+readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.11"
+authors = [{ name = "Ehsan Hajian" }]
+keywords = [
+  "validator",
+  "ethereum",
+  "solana",
+  "cosmos",
+  "polkadot",
+  "prometheus",
+  "monitoring",
+  "staking",
+  "slashing",
+  "alerting",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Web Environment",
+  "Framework :: FastAPI",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: System :: Monitoring",
+]
 dependencies = [
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.32.0",
@@ -18,11 +44,20 @@ dependencies = [
   "python-dotenv>=1.0.1",
 ]
 
+[project.urls]
+Homepage = "https://ehsanhajian.github.io/ValidatorPulse/"
+Repository = "https://github.com/ehsanhajian/ValidatorPulse"
+Issues = "https://github.com/ehsanhajian/ValidatorPulse/issues"
+Changelog = "https://github.com/ehsanhajian/ValidatorPulse/releases"
+
 [project.scripts]
 validator-pulse = "validator_pulse.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["validator_pulse*"]
+
+[tool.setuptools.package-data]
+validator_pulse = ["templates/*", "static/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

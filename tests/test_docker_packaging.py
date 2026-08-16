@@ -53,6 +53,8 @@ def test_dockerfile_runs_as_non_root_without_reload() -> None:
     assert "UVICORN_RELOAD=false" in text
     assert "HOST=0.0.0.0" in text
     assert 'CMD ["python", "-m", "validator_pulse"]' in text
+    assert "COPY pyproject.toml README.md" in text
+    assert "COPY templates" not in text
 
 
 def test_reload_defaults_to_loopback_only(monkeypatch) -> None:

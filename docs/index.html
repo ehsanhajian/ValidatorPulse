@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ValidatorPulse — self-hosted validator monitoring</title>
+  <meta name="description" content="Self-hosted validator monitoring for Ethereum, Polkadot, Cosmos, Solana, and more — Prometheus metrics and multi-channel alerts." />
+  <link rel="canonical" href="https://ehsanhajian.github.io/ValidatorPulse/" />
+  <meta property="og:title" content="ValidatorPulse" />
+  <meta property="og:description" content="Self-hosted validator monitoring for Ethereum, Polkadot, Cosmos, Solana, and more — Prometheus metrics and multi-channel alerts." />
+  <meta property="og:image" content="https://ehsanhajian.github.io/ValidatorPulse/images/dashboard-ethereum.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f3f1eb;
+      --ink: #1a2330;
+      --ink-muted: #5c6b7a;
+      --line: #d5d0c6;
+      --teal: #0f4c5c;
+      --teal-soft: #d7e6ea;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      color: var(--ink);
+      font-family: "IBM Plex Sans", sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(42, 143, 156, 0.12), transparent 55%),
+        linear-gradient(180deg, #efece4 0%, var(--bg) 40%, #ebe7df 100%);
+    }
+    .page { max-width: 52rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    .eyebrow {
+      margin: 0 0 0.5rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--teal);
+    }
+    h1 { margin: 0 0 0.75rem; font-size: 2.25rem; letter-spacing: -0.03em; }
+    .lede { margin: 0 0 1.5rem; font-size: 1.15rem; line-height: 1.5; color: var(--ink-muted); }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 2rem; }
+    a.button {
+      display: inline-block;
+      padding: 0.65rem 1rem;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: #faf8f4;
+    }
+    a.button.primary { background: var(--teal); color: #f7f4ee; border-color: var(--teal); }
+    h2 { margin: 2rem 0 0.75rem; font-size: 1.15rem; }
+    p, li { line-height: 1.55; }
+    .chains { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; list-style: none; }
+    .chains li {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.8rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 999px;
+      background: var(--teal-soft);
+      color: var(--teal);
+    }
+    figure { margin: 1.25rem 0 0; }
+    img {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #faf8f4;
+    }
+    figcaption { margin-top: 0.5rem; color: var(--ink-muted); font-size: 0.9rem; }
+    pre {
+      overflow-x: auto;
+      padding: 1rem 1.1rem;
+      border-radius: 10px;
+      background: #1a2330;
+      color: #f3f1eb;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.85rem;
+    }
+    footer { margin-top: 2.5rem; color: var(--ink-muted); font-size: 0.9rem; }
+    footer a { color: var(--teal); }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <p class="eyebrow">Validator health</p>
+    <h1>ValidatorPulse</h1>
+    <p class="lede">
+      Self-hosted validator monitoring for Ethereum, Polkadot, Cosmos, Solana, and more —
+      Prometheus metrics and multi-channel alerts.
+    </p>
+    <div class="actions">
+      <a class="button primary" href="https://github.com/ehsanhajian/ValidatorPulse#installation">Quick start in the README</a>
+      <a class="button" href="https://github.com/ehsanhajian/ValidatorPulse">GitHub</a>
+      <a class="button" href="https://pypi.org/project/validator-pulse/">PyPI</a>
+    </div>
+
+    <h2>Supported chains</h2>
+    <ul class="chains">
+      <li>Ethereum</li>
+      <li>Polkadot</li>
+      <li>Cosmos</li>
+      <li>Solana</li>
+      <li>NEAR</li>
+      <li>Cardano</li>
+      <li>Tezos</li>
+      <li>Algorand</li>
+      <li>BSC</li>
+      <li>Aptos</li>
+      <li>Sui</li>
+      <li>Monad</li>
+      <li>Avalanche</li>
+      <li>Mina</li>
+      <li>MultiversX</li>
+      <li>TON</li>
+    </ul>
+
+    <h2>Dashboard</h2>
+    <figure>
+      <img src="images/dashboard-ethereum.png" alt="ValidatorPulse Ethereum dashboard in demo mode" />
+      <figcaption>Ethereum dashboard (demo mode). The README has the Polkadot collator view and live-mode setup.</figcaption>
+    </figure>
+
+    <h2>Install</h2>
+    <pre>pip install validator-pulse
+CHAIN=ethereum DEMO_MODE=true validator-pulse</pre>
+    <p>Docker Compose + Caddy is also documented in the README. One <code>CHAIN</code> per process.</p>
+
+    <footer>
+      MIT-licensed. Source and docs:
+      <a href="https://github.com/ehsanhajian/ValidatorPulse">github.com/ehsanhajian/ValidatorPulse</a>
+    </footer>
+  </main>
+</body>
+</html>
