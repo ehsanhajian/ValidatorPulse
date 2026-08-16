@@ -17,7 +17,7 @@ from validator_pulse.metrics import to_prometheus
 from validator_pulse.models import AlertEvent
 from validator_pulse.pulse import collect_pulse, get_or_collect_pulse
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(ROOT / "templates"))
 
 

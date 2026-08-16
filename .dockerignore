@@ -13,6 +13,7 @@ tests
 docs
 deploy
 *.md
+!README.md
 .env
 .env.local
 .env.*

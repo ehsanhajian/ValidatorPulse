@@ -2,15 +2,28 @@
 
 **Is my validator operating correctly?**
 
-ValidatorPulse is a FastAPI service that answers that question with a live dashboard, Prometheus metrics, and multi-channel alerts. It watches operator duties, consensus health, and host infrastructure—so you catch downtime and penalties before they escalate.
+Self-hosted validator monitoring for Ethereum, Polkadot, Cosmos, Solana, and more — Prometheus metrics and multi-channel alerts. A FastAPI service with a live dashboard that watches operator duties, consensus health, and host infrastructure so you catch downtime and penalties before they escalate.
 
 **Non-goal:** it does not scan external security surfaces.
 
+Landing page: [ehsanhajian.github.io/ValidatorPulse](https://ehsanhajian.github.io/ValidatorPulse/).
+
 ## Installation
 
-Two install paths. Option A is the lightweight / dev default. Option B puts the dashboard behind Caddy.
+Three install paths. Option A is the PyPI / venv default. Option B is a local checkout for development. Option C puts the dashboard behind Caddy.
 
-### Option A — Python venv (no Docker)
+### Option A — PyPI
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install validator-pulse
+CHAIN=ethereum DEMO_MODE=true validator-pulse
+```
+
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). Demo mode simulates duty data so you can explore the UI without a node. For live monitoring, copy settings from [`.env.example`](.env.example) (or the [compose sample](compose.env.example)).
+
+### Option B — Python venv from a checkout
 
 ```bash
 python3 -m venv .venv
@@ -23,7 +36,7 @@ python -m validator_pulse
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000). With `DEMO_MODE=true` (default), the app simulates duty data so you can explore the UI without a node.
 
-### Option B — Docker Compose + Caddy
+### Option C — Docker Compose + Caddy
 
 ```bash
 cp compose.env.example .env
@@ -508,7 +521,7 @@ scrape_configs:
     # or: basic_auth: { username: <username>, password: <password> }
 ```
 
-`WEB_METRICS_TOKEN` is accepted as `Authorization: Bearer …`, `X-Metrics-Token`, or `?token=…` on `/api/metrics` only — it does not unlock the dashboard. If the app binds off loopback without credentials, startup logs a warning. Compose scrapes `127.0.0.1:9091` (see Option B).
+`WEB_METRICS_TOKEN` is accepted as `Authorization: Bearer …`, `X-Metrics-Token`, or `?token=…` on `/api/metrics` only — it does not unlock the dashboard. If the app binds off loopback without credentials, startup logs a warning. Compose scrapes `127.0.0.1:9091` (see Option C).
 
 ## Configuration reference
 
@@ -634,9 +647,9 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | PagerDuty | `PAGERDUTY_ROUTING_KEY` |
 
 ```bash
-# Option A
+# Option A / B (venv)
 curl -X POST http://127.0.0.1:3000/api/alerts/test
-# Option B (through Caddy)
+# Option C (through Caddy)
 curl -X POST http://127.0.0.1/api/alerts/test
 ```
 
@@ -666,6 +679,10 @@ GET /api/metrics
 ```bash
 pytest
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
 
 ## Support the project
 

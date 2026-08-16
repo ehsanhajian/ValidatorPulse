@@ -4,10 +4,8 @@ WORKDIR /app
 
 RUN useradd --create-home --uid 1000 --shell /usr/sbin/nologin vp
 
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY validator_pulse ./validator_pulse
-COPY templates ./templates
-COPY static ./static
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir . \
