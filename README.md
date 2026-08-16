@@ -451,7 +451,7 @@ Optional: `MULTIVERSX_SHARD_ID`, `MULTIVERSX_JAIL_RATING_THRESHOLD`. Each key on
 | `TON_NETWORK` | `mainnet` or `testnet` (label) |
 | `TON_EFFICIENCY_THRESHOLD` | override the 90% completed-round policy |
 
-Complaints / fines are fine risk, not Ethereum-style principal slashing. Zero efficiency at round start is ignored.
+Native token displays as **GRAM** (formerly Toncoin / TON). The network is still TON; `CHAIN=ton` is unchanged. Base unit stays nanoton. Complaints / fines are fine risk, not Ethereum-style principal slashing. Zero efficiency at round start is ignored.
 
 ## Auth and Prometheus
 

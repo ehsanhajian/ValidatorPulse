@@ -187,8 +187,8 @@ def test_multiversx_token_defaults() -> None:
 
 def test_ton_token_defaults() -> None:
     ton = resolve_reward_token(chain="ton")
-    assert ton.symbol == "TON"
+    assert ton.symbol == "GRAM"
     assert ton.decimals == 9
     assert ton.base_unit == "nanoton"
     text = format_token_amount(2 * 10**9, ton)
-    assert "TON" in text
+    assert "GRAM" in text

@@ -38,7 +38,7 @@ _CHAIN_CASES: list[tuple[str, dict, str, str, int, int | None]] = [
     ("avalanche", {}, "AVAX", "nAVAX", 9, None),
     ("mina", {}, "MINA", "nanomina", 9, None),
     ("multiversx", {}, "EGLD", "wei", 18, None),
-    ("ton", {}, "TON", "nanoton", 9, None),
+    ("ton", {}, "GRAM", "nanoton", 9, None),
 ]
 
 

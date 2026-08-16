@@ -290,7 +290,7 @@ def index_role(index: int | None) -> str:
 def nanotons_to_label(amount: int | None) -> str:
     if amount is None:
         return "unknown"
-    return f"{amount / NANOTON:.4f} TON"
+    return f"{amount / NANOTON:.4f} GRAM"
 
 
 async def try_fetch_metrics(metrics_url: str | None) -> tuple[TonMetrics | None, str | None]:
