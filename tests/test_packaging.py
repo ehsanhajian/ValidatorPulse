@@ -58,6 +58,17 @@ def test_env_example_lists_every_implemented_chain() -> None:
     assert "cosmoshub" in header and "celestia" in header
 
 
+def test_package_version_is_consistent() -> None:
+    import tomllib
+
+    from validator_pulse import __version__
+    from validator_pulse.web import app
+
+    pyproject = tomllib.loads((REPO / "pyproject.toml").read_text())
+    assert pyproject["project"]["version"] == __version__
+    assert app.version == __version__
+
+
 def test_pyproject_has_discoverability_metadata() -> None:
     text = (REPO / "pyproject.toml").read_text()
     assert 'name = "validator-pulse"' in text
