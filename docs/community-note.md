@@ -12,9 +12,9 @@ It watches operator duties, consensus health, and host infra so you catch downti
 
 - Landing: https://ehsanhajian.github.io/ValidatorPulse/
 - Repo / README: https://github.com/ehsanhajian/ValidatorPulse
-- Install: `pip install validator-pulse` then `CHAIN=ethereum DEMO_MODE=true validator-pulse`
+- Install: clone the repo, `pip install -e .`, copy `.env.example` to `.env.local`, then `python -m validator_pulse` (demo mode, http://127.0.0.1:3000). Compose + Caddy is Option B in the README.
 
-One chain per process. Docker Compose + Caddy is documented if you want it behind a reverse proxy.
+One chain per process. `pip install validator-pulse` is not on PyPI yet.
 
 Not a SaaS and not a security scanner — self-hosted only.
 
