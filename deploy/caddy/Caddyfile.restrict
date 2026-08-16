@@ -1,0 +1,28 @@
+# Production: fail-closed IP allowlist on the public site.
+# Set CADDY_ALLOW_IPS to space-separated IPs/CIDRs (operator / VPN).
+# When CADDY_ALLOW_IPS is unset or empty, the default is an unroutable
+# address so every client is denied.
+{
+	admin off
+	persist_config off
+}
+
+{$CADDY_SITE_ADDRESS:http://:80} {
+	@allowed remote_ip {$CADDY_ALLOW_IPS:255.255.255.255}
+	handle @allowed {
+		encode gzip
+		reverse_proxy validator-pulse:3000
+	}
+	handle {
+		respond "Forbidden" 403
+	}
+}
+
+# Internal metrics listener (not IP-restricted). Compose binds it to loopback.
+# Add scraper IPs to CADDY_ALLOW_IPS instead if you prefer a single public path.
+http://:9091 {
+	handle /api/metrics* {
+		reverse_proxy validator-pulse:3000
+	}
+	respond "Not found" 404
+}

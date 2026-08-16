@@ -3,5 +3,8 @@
 /.github/ @ehsanhajian
 /SECURITY.md @ehsanhajian
 /.env.example @ehsanhajian
+/Dockerfile @ehsanhajian
+/docker-compose.yml @ehsanhajian
+/deploy/caddy/ @ehsanhajian
 /validator_pulse/alerts/ @ehsanhajian
 /validator_pulse/config.py @ehsanhajian

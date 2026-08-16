@@ -22,7 +22,7 @@
       </div>
         <div class="actions">
         <span class="chip">{{ snapshot.chain_display_name }}</span>
-        {% if snapshot.parachain_id %}
+        {% if snapshot.chain == 'polkadot' and snapshot.parachain_id %}
         <span class="chip">para {{ snapshot.parachain_id }} · {{ snapshot.reward_token_symbol }}</span>
         {% elif snapshot.chain == 'polkadot' %}
         <span class="chip">{{ snapshot.reward_token_symbol }}</span>
@@ -73,10 +73,24 @@
 
     <section class="grid-2 animate-rise-delay-2">
       <div class="panel">
+        {% set duty_legend = namespace(show=false) %}
+        {% for v in snapshot.validators %}
+          {% if v.recent_attestations or v.recent_proposals or v.recent_duties %}
+            {% set duty_legend.show = true %}
+          {% endif %}
+        {% endfor %}
         <div class="panel-head">
           <h3>{{ snapshot.operator_label|capitalize }} monitoring</h3>
           <span>{{ snapshot.validators|length }} {{ snapshot.operator_label }}{% if snapshot.validators|length != 1 %}s{% endif %}</span>
         </div>
+        {% if duty_legend.show %}
+        <p class="duty-legend" aria-label="Duty outcome legend">
+          <span class="duty-legend-item"><span class="duty-chip outcome-success" aria-hidden="true">S</span> success</span>
+          <span class="duty-legend-item"><span class="duty-chip outcome-late" aria-hidden="true">L</span> late</span>
+          <span class="duty-legend-item"><span class="duty-chip outcome-missed" aria-hidden="true">M</span> missed</span>
+          <span class="duty-legend-item"><span class="duty-chip outcome-pending" aria-hidden="true">P</span> pending</span>
+        </p>
+        {% endif %}
         <div id="validators">
           {% for v in snapshot.validators %}
           <article class="validator">
@@ -134,7 +148,7 @@
                 <span class="muted duty-label">Recent {{ snapshot.primary_duty_label|lower }}</span>
                 <div class="duty-chips">
                   {% for d in v.recent_attestations %}
-                  <span class="duty-chip outcome-{{ d.outcome }}" title="epoch {{ d.epoch }} · slot {{ d.slot }} · {{ d.outcome }}{% if d.inclusion_delay %} · delay {{ d.inclusion_delay }}{% endif %}">{{ d.outcome[0]|upper }}</span>
+                  <span class="duty-chip outcome-{{ d.outcome }}" title="epoch {{ d.epoch }} · slot {{ d.slot }} · {{ d.outcome }}{% if d.inclusion_delay %} · delay {{ d.inclusion_delay }}{% endif %}" aria-label="{{ d.outcome }} attestation, epoch {{ d.epoch }}, slot {{ d.slot }}{% if d.inclusion_delay %}, delay {{ d.inclusion_delay }}{% endif %}">{{ d.outcome[0]|upper }}</span>
                   {% endfor %}
                 </div>
               </div>
@@ -144,7 +158,7 @@
                 <span class="muted duty-label">Recent {{ snapshot.secondary_duty_label|lower }}</span>
                 <div class="duty-chips">
                   {% for d in v.recent_proposals %}
-                  <span class="duty-chip outcome-{{ d.outcome }}" title="epoch {{ d.epoch }} · slot {{ d.slot }} · {{ d.outcome }}">{{ d.outcome[0]|upper }}</span>
+                  <span class="duty-chip outcome-{{ d.outcome }}" title="epoch {{ d.epoch }} · slot {{ d.slot }} · {{ d.outcome }}" aria-label="{{ d.outcome }} proposal, epoch {{ d.epoch }}, slot {{ d.slot }}">{{ d.outcome[0]|upper }}</span>
                   {% endfor %}
                 </div>
               </div>
@@ -154,7 +168,7 @@
                 <span class="muted duty-label">Recent duties</span>
                 <div class="duty-chips">
                   {% for d in v.recent_duties %}
-                  <span class="duty-chip outcome-{{ d.outcome }}" title="{{ d.label }} · {{ d.outcome }}">{{ d.outcome[0]|upper }}</span>
+                  <span class="duty-chip outcome-{{ d.outcome }}" title="{{ d.label }} · {{ d.outcome }}" aria-label="{{ d.outcome }} {{ d.label }}">{{ d.outcome[0]|upper }}</span>
                   {% endfor %}
                 </div>
               </div>

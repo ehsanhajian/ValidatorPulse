@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -9,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from validator_pulse.alerts import configured_channels, dispatch_alert
-from validator_pulse.auth import WebAuthMiddleware
+from validator_pulse.auth import WebAuthMiddleware, warn_if_exposed_without_auth
 from validator_pulse.chains import UnsupportedChainError
 from validator_pulse.config import get_settings
 from validator_pulse.metrics import to_prometheus
@@ -19,10 +20,18 @@ from validator_pulse.pulse import collect_pulse, get_or_collect_pulse
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = Jinja2Templates(directory=str(ROOT / "templates"))
 
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    warn_if_exposed_without_auth()
+    yield
+
+
 app = FastAPI(
     title="ValidatorPulse",
     description="Keep blockchain operators healthy and catch downtime or penalties early.",
     version="0.1.0",
+    lifespan=_lifespan,
 )
 
 app.add_middleware(WebAuthMiddleware)

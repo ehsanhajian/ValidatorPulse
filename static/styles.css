@@ -357,6 +357,26 @@ button:disabled { opacity: 0.6; cursor: wait; }
   .stats { grid-template-columns: repeat(4, 1fr); }
 }
 
+.duty-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin: -0.35rem 0 1rem;
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+
+.duty-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.duty-legend .duty-chip {
+  cursor: default;
+}
+
 .duty-history {
   margin-top: 0.85rem;
   padding-top: 0.75rem;

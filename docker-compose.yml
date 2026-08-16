@@ -1,0 +1,60 @@
+# ValidatorPulse + Caddy. The app listens on the compose network only;
+# Caddy is the sole published entrypoint (HTTP/HTTPS + loopback metrics).
+
+services:
+  validator-pulse:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: validator-pulse:local
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.local
+        required: false
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "3000"
+      UVICORN_RELOAD: "false"
+      CHAIN: "${CHAIN:-ethereum}"
+      DEMO_MODE: "${DEMO_MODE:-true}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; socket.create_connection(('127.0.0.1', 3000), 2).close()",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      validator-pulse:
+        condition: service_healthy
+    environment:
+      CADDY_SITE_ADDRESS: "${CADDY_SITE_ADDRESS:-http://:80}"
+      CADDY_ALLOW_IPS: "${CADDY_ALLOW_IPS:-}"
+    ports:
+      - "${CADDY_HTTP_BIND:-127.0.0.1}:${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_BIND:-127.0.0.1}:${CADDY_HTTPS_PORT:-443}:443"
+      - "127.0.0.1:${CADDY_METRICS_PORT:-9091}:9091"
+    volumes:
+      - ./deploy/caddy/${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
