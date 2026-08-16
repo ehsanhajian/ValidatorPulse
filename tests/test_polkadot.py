@@ -175,3 +175,30 @@ def test_live_relay_requires_stash_addresses() -> None:
     assert collection.operators == []
     assert collection.consensus.last_error
     assert "VALIDATOR_STASH_ADDRESSES" in (collection.consensus.last_error or "")
+
+
+def test_ethereum_snapshot_ignores_parachain_id() -> None:
+    settings = Settings(
+        chain="ethereum",
+        demo_mode=True,
+        parachain_id=2006,
+        fetch_operator_names=False,
+    )
+    snapshot = asyncio.run(collect_pulse(settings, dispatch_alerts=False))
+    assert snapshot.chain == "ethereum"
+    assert snapshot.parachain_id is None
+    assert snapshot.reward_token_symbol == "ETH"
+
+
+def test_polkadot_collator_snapshot_keeps_parachain_id() -> None:
+    settings = Settings(
+        chain="polkadot",
+        demo_mode=True,
+        parachain_id=2006,
+        fetch_operator_names=False,
+        collator_addresses="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+    )
+    snapshot = asyncio.run(collect_pulse(settings, dispatch_alerts=False))
+    assert snapshot.chain == "polkadot"
+    assert snapshot.parachain_id == 2006
+    assert snapshot.reward_token_symbol == "ASTR"

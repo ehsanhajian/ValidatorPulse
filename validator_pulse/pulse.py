@@ -18,6 +18,15 @@ from validator_pulse.scoring import aggregate_fleet_metrics
 from validator_pulse.store import get_alert_history, get_snapshot, set_snapshot
 
 
+def _snapshot_parachain_id(adapter: object, settings: Settings) -> int | None:
+    """Parachain id is a Polkadot collator label only — never leak onto other chains."""
+    if getattr(adapter, "name", "") != "polkadot":
+        return None
+    if getattr(adapter, "role", None) == "validator":
+        return None
+    return settings.parachain_id
+
+
 async def collect_pulse(
     settings: Settings | None = None, *, dispatch_alerts: bool = False
 ) -> PulseSnapshot:
@@ -40,10 +49,11 @@ async def collect_pulse(
     infrastructure = collection.infrastructure
     demo_mode = adapter.is_demo(settings)
 
+    parachain_id = _snapshot_parachain_id(adapter, settings)
     await enrich_operator_names(
         validators,
         chain=adapter.name,
-        parachain_id=settings.parachain_id,
+        parachain_id=parachain_id,
         enabled=settings.fetch_operator_names,
         subscan_api_key=settings.subscan_api_key,
         beaconcha_base_url=settings.beaconcha_base_url,
@@ -58,11 +68,6 @@ async def collect_pulse(
     )
 
     metrics = aggregate_fleet_metrics(validators)
-    parachain_id = (
-        None
-        if getattr(adapter, "role", None) == "validator"
-        else settings.parachain_id
-    )
     token = resolve_reward_token(
         chain=adapter.name,
         parachain_id=parachain_id,

@@ -1,0 +1,21 @@
+# Lab / demo: HTTP on :80 with no IP allowlist.
+# Dashboard and APIs are reached only through this proxy (the app port is not published).
+# Prometheus on the same host should scrape the loopback metrics listener (:9091).
+{
+	admin off
+	persist_config off
+}
+
+{$CADDY_SITE_ADDRESS:http://:80} {
+	encode gzip
+	reverse_proxy validator-pulse:3000
+}
+
+# Internal metrics listener. Compose publishes this on 127.0.0.1 only.
+# App-level WEB_METRICS_TOKEN / Basic auth still apply.
+http://:9091 {
+	handle /api/metrics* {
+		reverse_proxy validator-pulse:3000
+	}
+	respond "Not found" 404
+}

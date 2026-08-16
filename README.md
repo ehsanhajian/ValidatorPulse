@@ -6,7 +6,11 @@ ValidatorPulse is a FastAPI service that answers that question with a live dashb
 
 **Non-goal:** it does not scan external security surfaces.
 
-## Quick start
+## Installation
+
+Two install paths. Option A is the lightweight / dev default. Option B puts the dashboard behind Caddy.
+
+### Option A — Python venv (no Docker)
 
 ```bash
 python3 -m venv .venv
@@ -18,6 +22,54 @@ python -m validator_pulse
 ```
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000). With `DEMO_MODE=true` (default), the app simulates duty data so you can explore the UI without a node.
+
+### Option B — Docker Compose + Caddy
+
+```bash
+cp compose.env.example .env
+docker compose up --build
+```
+
+Open [http://127.0.0.1](http://127.0.0.1). Demo mode is the default. The app binds on the Compose network only (`validator-pulse:3000`); Caddy is the only published entrypoint.
+
+| Listener | Default bind | Purpose |
+| --- | --- | --- |
+| HTTP | `127.0.0.1:80` | Dashboard + `/api/*` |
+| HTTPS | `127.0.0.1:443` | Used when `CADDY_SITE_ADDRESS` is a hostname (automatic TLS) |
+| Metrics | `127.0.0.1:9091` | `/api/metrics` only, for a local Prometheus scrape |
+
+Copy `.env.example` into `.env` / `.env.local` for chain, RPC, and alert settings. From the container, a node on the host is `host.docker.internal`, not `127.0.0.1`:
+
+```env
+BEACON_API_URL=http://host.docker.internal:5052
+```
+
+**IP allowlist (fail closed).** Lab Compose uses `deploy/caddy/Caddyfile` (no IP filter). For production:
+
+```env
+CADDYFILE=Caddyfile.restrict
+CADDY_HTTP_BIND=0.0.0.0
+CADDY_HTTPS_BIND=0.0.0.0
+CADDY_SITE_ADDRESS=pulse.example.com
+CADDY_ALLOW_IPS=203.0.113.10 10.8.0.0/24
+```
+
+`Caddyfile.restrict` denies every client unless `CADDY_ALLOW_IPS` lists them (space-separated IPs/CIDRs). An empty list denies all. Set web auth as well if Caddy is reachable beyond this machine.
+
+**Metrics scrape.** Keep scrapes on the loopback listener (`127.0.0.1:9091`) so Prometheus does not need a public dashboard IP. To scrape the public site instead, add the scraper CIDR to `CADDY_ALLOW_IPS`. `WEB_METRICS_TOKEN` still applies on both paths.
+
+```yaml
+# prometheus.yml (Compose)
+scrape_configs:
+  - job_name: validatorpulse
+    static_configs:
+      - targets: ["127.0.0.1:9091"]
+    authorization:
+      type: Bearer
+      credentials: scrape-token-here
+```
+
+Non-goal: Kubernetes / cloud-marketplace packaging. This Compose file is for a single-host operator.
 
 ## What it monitors
 
@@ -50,7 +102,7 @@ Adapters supply display labels (`risk_label`, duty names, consensus node name). 
 | `multiversx` | Implemented | MultiversX validators via node APIs + gateway heartbeat (rating, jail vs slash) |
 | `ton` | Implemented | TON validators via Validation API + QoS catchain efficiency (fines, elections, ADNL history) |
 
-Shared models were generalized for heterogeneous L1s in [#35](https://github.com/ehsanhajian/ValidatorPulse/issues/35). Packaging (Docker / Caddy) is tracked in [#9](https://github.com/ehsanhajian/ValidatorPulse/issues/9).
+Shared models were generalized for heterogeneous L1s in [#35](https://github.com/ehsanhajian/ValidatorPulse/issues/35). Docker Compose + Caddy packaging is in [#9](https://github.com/ehsanhajian/ValidatorPulse/issues/9).
 
 ```env
 CHAIN=ethereum
@@ -489,7 +541,7 @@ WEB_METRICS_TOKEN=scrape-token-here
 ```
 
 ```yaml
-# prometheus.yml
+# prometheus.yml (Option A — venv)
 scrape_configs:
   - job_name: validatorpulse
     static_configs:
@@ -500,7 +552,7 @@ scrape_configs:
     # or: basic_auth: { username: <username>, password: <password> }
 ```
 
-`WEB_METRICS_TOKEN` is accepted as `Authorization: Bearer …`, `X-Metrics-Token`, or `?token=…` on `/api/metrics` only — it does not unlock the dashboard. If the app binds off loopback without credentials, startup logs a warning.
+`WEB_METRICS_TOKEN` is accepted as `Authorization: Bearer …`, `X-Metrics-Token`, or `?token=…` on `/api/metrics` only — it does not unlock the dashboard. If the app binds off loopback without credentials, startup logs a warning. Compose scrapes `127.0.0.1:9091` (see Option B).
 
 ## Configuration reference
 
@@ -601,9 +653,14 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | `ENS_LOOKUP_ENABLED` / `ENS_API_KEY` / `ENS_API_BASE_URL` | ENS primary names | `false` / unset / ENSWhois |
 | `DEMO_MODE` | Simulated duties | `true` |
 | `POLL_INTERVAL_SECONDS` | Cache window | `12` |
-| `HOST` / `PORT` | Bind address | `127.0.0.1` / `3000` |
+| `HOST` / `PORT` | Bind address (Compose forces `0.0.0.0:3000` on the internal network) | `127.0.0.1` / `3000` |
 | `WEB_AUTH_USERNAME` / `WEB_AUTH_PASSWORD` | HTTP Basic auth for panel + APIs (both required) | unset (open) |
 | `WEB_METRICS_TOKEN` | Optional Bearer token for `/api/metrics` scrapes | unset |
+| `CADDYFILE` | Compose: `Caddyfile` (lab) or `Caddyfile.restrict` (fail-closed allowlist) | `Caddyfile` |
+| `CADDY_SITE_ADDRESS` | Caddy site address (`http://:80` or a hostname for automatic HTTPS) | `http://:80` |
+| `CADDY_ALLOW_IPS` | Space-separated IPs/CIDRs; empty + restrict file denies all | unset (deny all when restricted) |
+| `CADDY_HTTP_BIND` / `CADDY_HTTPS_BIND` | Host bind for published Caddy ports | `127.0.0.1` |
+| `CADDY_HTTP_PORT` / `CADDY_HTTPS_PORT` / `CADDY_METRICS_PORT` | Published Caddy ports | `80` / `443` / `9091` |
 | `ALERT_MISSED_ATTESTATIONS` | Alert if missed primary duties ≥ N | `2` |
 | `ALERT_EFFECTIVENESS_BELOW` | Alert if effectiveness &lt; N% | `95` |
 | `ALERT_SLASHING_RISK_ABOVE` | Alert if risk score ≥ N | `40` |
@@ -621,7 +678,10 @@ Restart after changing `.env.local` (or use reload via `python -m validator_puls
 | PagerDuty | `PAGERDUTY_ROUTING_KEY` |
 
 ```bash
+# Option A
 curl -X POST http://127.0.0.1:3000/api/alerts/test
+# Option B (through Caddy)
+curl -X POST http://127.0.0.1/api/alerts/test
 ```
 
 ## Metrics & API
