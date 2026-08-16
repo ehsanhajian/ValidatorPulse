@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from validator_pulse import __version__
 from validator_pulse.alerts import configured_channels, dispatch_alert
 from validator_pulse.auth import WebAuthMiddleware, warn_if_exposed_without_auth
 from validator_pulse.chains import UnsupportedChainError
@@ -30,7 +31,7 @@ async def _lifespan(_app: FastAPI):
 app = FastAPI(
     title="ValidatorPulse",
     description="Keep blockchain operators healthy and catch downtime or penalties early.",
-    version="0.1.0",
+    version=__version__,
     lifespan=_lifespan,
 )
 

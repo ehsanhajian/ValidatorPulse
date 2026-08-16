@@ -569,6 +569,8 @@ Adapters set `risk_kind` / `risk_label` (slashing, kickout, jail, downtime, …)
 pytest
 ```
 
+Pull requests and `main` run the same suite in GitHub Actions. Publishing a GitHub release (`vX.Y.Z`) runs tests again, then attempts PyPI (needs a trusted publisher on the `pypi` environment).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
