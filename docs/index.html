@@ -95,6 +95,7 @@
     </p>
     <div class="actions">
       <a class="button primary" href="https://github.com/ehsanhajian/ValidatorPulse#installation">Install from the README</a>
+      <a class="button" href="https://pypi.org/project/validator-pulse/">PyPI</a>
       <a class="button" href="https://github.com/ehsanhajian/ValidatorPulse">GitHub</a>
     </div>
 
@@ -125,14 +126,11 @@
     </figure>
 
     <h2>Install</h2>
-    <p>Clone the repo, then follow Option A (Python venv) or Option B (Docker Compose) in the README. <code>pip install validator-pulse</code> is not on PyPI yet.</p>
-    <pre>git clone https://github.com/ehsanhajian/ValidatorPulse.git
-cd ValidatorPulse
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt && pip install -e .
-cp .env.example .env.local
-python -m validator_pulse</pre>
-    <p>Open <a href="http://127.0.0.1:3000">http://127.0.0.1:3000</a>. One <code>CHAIN</code> per process.</p>
+    <p>Python 3.11+. Demo mode needs no node. One <code>CHAIN</code> per process. Full checkout and Docker Compose steps are in the README.</p>
+    <pre>python3 -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install validator-pulse
+CHAIN=ethereum DEMO_MODE=true validator-pulse</pre>
+    <p>Open <a href="http://127.0.0.1:3000">http://127.0.0.1:3000</a>.</p>
 
     <footer>
       MIT-licensed. Source and docs:

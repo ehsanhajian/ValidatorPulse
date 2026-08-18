@@ -29,23 +29,24 @@ def test_pages_landing_covers_acceptance() -> None:
     assert "Ethereum" in html and "Polkadot" in html and "Cosmos" in html and "Solana" in html
     assert "images/dashboard-ethereum.png" in html
     assert "github.com/ehsanhajian/ValidatorPulse#installation" in html
-    assert "git clone" in html
-    assert "pip install -e ." in html
-    assert "pypi.org/project/validator-pulse" not in html
+    assert "pip install validator-pulse" in html
+    assert "pypi.org/project/validator-pulse" in html
+    assert "not on PyPI yet" not in html
     assert (REPO / "docs" / "images" / "dashboard-ethereum.png").is_file()
     assert (REPO / "docs" / ".nojekyll").exists()
 
 
-def test_readme_install_is_clone_first() -> None:
+def test_readme_install_leads_with_pypi() -> None:
     text = (REPO / "README.md").read_text()
     install = text.split("## Installation", 1)[1].split("## What it monitors", 1)[0]
+    assert "pip install validator-pulse" in install
+    assert "not available yet" not in install
     assert "git clone https://github.com/ehsanhajian/ValidatorPulse.git" in install
     assert "pip install -e ." in install
     assert "cp .env.example .env.local" in install
     assert "cp compose.env.example .env" in install
     assert "host.docker.internal" in install
-    assert "not available yet" in install
-    assert "pip install validator-pulse" in install
+    assert install.find("pip install validator-pulse") < install.find("git clone")
 
 
 def test_env_example_lists_every_implemented_chain() -> None:
