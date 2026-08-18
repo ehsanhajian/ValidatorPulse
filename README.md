@@ -9,7 +9,8 @@ It does **not** scan external security surfaces. One `CHAIN` per process.
 | | |
 | --- | --- |
 | Landing | [ehsanhajian.github.io/ValidatorPulse](https://ehsanhajian.github.io/ValidatorPulse/) |
-| Install | Clone this repo, then Option A (venv) or Option B (Compose) below |
+| Install | `pip install validator-pulse` (Python 3.11+), or clone + Compose below |
+| Package | [PyPI](https://pypi.org/project/validator-pulse/) |
 | License | [MIT](LICENSE) |
 
 ## Contents
@@ -29,52 +30,43 @@ It does **not** scan external security surfaces. One `CHAIN` per process.
 
 ## Installation
 
-`pip install validator-pulse` is **not available yet** (PyPI publisher pending). Install from this git repo.
-
 | Path | You need | Dashboard |
 | --- | --- | --- |
-| **A — Python venv** | git + Python 3.11+ | [http://127.0.0.1:3000](http://127.0.0.1:3000) |
-| **B — Docker Compose** | git + Docker Compose | [http://127.0.0.1](http://127.0.0.1) (port **80**, not 3000) |
+| **A — PyPI** | Python 3.11+ | [http://127.0.0.1:3000](http://127.0.0.1:3000) |
+| **B — Git checkout** | git + Python 3.11+ | [http://127.0.0.1:3000](http://127.0.0.1:3000) |
+| **C — Docker Compose** | git + Docker Compose | [http://127.0.0.1](http://127.0.0.1) (port **80**, not 3000) |
 
-Both paths start in demo mode so you can confirm the UI without a node. One `CHAIN` per process — `ethereum,solana` is invalid; run a second instance for a second network.
+All three start in demo mode so you can confirm the UI without a node. One `CHAIN` per process — `ethereum,solana` is invalid; run a second instance for a second network.
 
-### Option A — Python venv
+### Option A — PyPI
 
-1. Clone and enter the repo:
-
-```bash
-git clone https://github.com/ehsanhajian/ValidatorPulse.git
-cd ValidatorPulse
-python3 --version    # must print 3.11 or newer
-```
-
-2. Create a virtualenv and install the package **from this checkout** (`pip install -e .` is required; `requirements.txt` alone is not enough):
+1. Python 3.11 or newer (`python3 --version`), then:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -U pip
-pip install -r requirements.txt
-pip install -e .
+pip install validator-pulse
 ```
 
-3. Copy the sample env. The app reads `.env.local`, then `.env`:
+2. Demo with no config file:
 
 ```bash
-cp .env.example .env.local
+CHAIN=ethereum DEMO_MODE=true validator-pulse
 ```
 
-Leave `DEMO_MODE=true` and `CHAIN=ethereum` for the first run.
-
-4. Start the server from the repo root, with the venv still active:
+Or download the sample env (it is **not** inside the wheel) and start from that directory:
 
 ```bash
-python -m validator_pulse
+curl -fsSL -o .env.local https://raw.githubusercontent.com/ehsanhajian/ValidatorPulse/main/.env.example
+validator-pulse
 ```
 
-5. Open [http://127.0.0.1:3000](http://127.0.0.1:3000). You should see the Ethereum demo dashboard.
+The app reads `.env.local`, then `.env`, from the current working directory. Leave `DEMO_MODE=true` and `CHAIN=ethereum` for the first run.
 
-**Go live (same venv):** edit `.env.local`, then Ctrl+C and start again.
+3. Open [http://127.0.0.1:3000](http://127.0.0.1:3000). You should see the Ethereum demo dashboard.
+
+**Go live:** edit `.env.local`, then Ctrl+C and start `validator-pulse` again.
 
 | Step | What to set |
 | --- | --- |
@@ -89,7 +81,28 @@ BEACON_API_URL=http://127.0.0.1:5052
 VALIDATOR_INDICES=123456
 ```
 
-### Option B — Docker Compose + Caddy
+### Option B — Git checkout (venv)
+
+Use this to hack on the code. `pip install -e .` is required; `requirements.txt` alone is not enough.
+
+```bash
+git clone https://github.com/ehsanhajian/ValidatorPulse.git
+cd ValidatorPulse
+python3 --version    # must print 3.11 or newer
+
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -U pip
+pip install -r requirements.txt
+pip install -e .
+
+cp .env.example .env.local
+python -m validator_pulse
+```
+
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). Live-mode edits are the same as Option A (edit `.env.local`, restart).
+
+### Option C — Docker Compose + Caddy
 
 The app port stays on the Compose network. Caddy is the only published entrypoint.
 
@@ -147,10 +160,10 @@ docker compose up --build
 
 | Symptom | Likely cause |
 | --- | --- |
-| `python3: command not found` or version &lt; 3.11 | Install Python 3.11+ and retry Option A |
-| `No module named validator_pulse` | venv not active, or you skipped `pip install -e .` |
-| Browser cannot connect to `:3000` | Option A only. Option B is [http://127.0.0.1](http://127.0.0.1) (port 80) |
-| Browser cannot connect to port 80 | Option B: `docker compose up` is not running, or another process owns `:80` |
+| `python3: command not found` or version &lt; 3.11 | Install Python 3.11+ and retry Option A or B |
+| `No module named validator_pulse` | venv not active, or (Option B) you skipped `pip install -e .` |
+| Browser cannot connect to `:3000` | Options A/B only. Option C is [http://127.0.0.1](http://127.0.0.1) (port 80) |
+| Browser cannot connect to port 80 | Option C: `docker compose up` is not running, or another process owns `:80` |
 | `UnsupportedChainError` / HTTP 400 | Typo in `CHAIN`, or comma-separated chains |
 | Demo works, live dashboard is empty | `DEMO_MODE` still `true`, or RPC / identifiers missing |
 | Compose cannot reach a node on this machine | Use `host.docker.internal`, not `127.0.0.1` |
@@ -466,8 +479,8 @@ Auth is off when unset (local demos stay open). Set **both** username and passwo
 
 | Install | Prometheus target |
 | --- | --- |
-| A (venv) | `127.0.0.1:3000` |
-| B (Compose) | `127.0.0.1:9091` (keep scrapes on loopback) |
+| A / B (PyPI or venv) | `127.0.0.1:3000` |
+| C (Compose) | `127.0.0.1:9091` (keep scrapes on loopback) |
 
 ```yaml
 scrape_configs:
@@ -536,9 +549,9 @@ Restart after changing `.env.local` (or rely on reload with `python -m validator
 | PagerDuty | `PAGERDUTY_ROUTING_KEY` |
 
 ```bash
-# A (venv)
+# A / B (PyPI or venv)
 curl -X POST http://127.0.0.1:3000/api/alerts/test
-# B (Compose / Caddy)
+# C (Compose / Caddy)
 curl -X POST http://127.0.0.1/api/alerts/test
 ```
 
@@ -569,7 +582,7 @@ Adapters set `risk_kind` / `risk_label` (slashing, kickout, jail, downtime, …)
 pytest
 ```
 
-Pull requests and `main` run the same suite in GitHub Actions. Publishing a GitHub release (`vX.Y.Z`) runs tests again, then attempts PyPI (needs a trusted publisher on the `pypi` environment).
+Pull requests and `main` run the same suite in GitHub Actions. Publishing a GitHub release (`vX.Y.Z`) runs tests again, then uploads to [PyPI](https://pypi.org/project/validator-pulse/).
 
 ## License
 
