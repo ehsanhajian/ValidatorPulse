@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "validator-pulse"
-version = "0.1.1"
+version = "0.1.2"
 description = "Self-hosted validator monitoring for Ethereum, Polkadot, Cosmos, Solana, and more — Prometheus metrics and multi-channel alerts."
 readme = "README.md"
 license = { text = "MIT" }
