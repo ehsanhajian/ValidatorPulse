@@ -59,9 +59,9 @@ def test_dockerfile_runs_as_non_root_without_reload() -> None:
 
 def test_reload_defaults_to_loopback_only(monkeypatch) -> None:
     monkeypatch.delenv("UVICORN_RELOAD", raising=False)
-    assert _reload_enabled("127.0.0.1") is True
-    assert _reload_enabled("0.0.0.0") is False
+    assert _reload_enabled("127.0.0.1", source_install=True) is True
+    assert _reload_enabled("0.0.0.0", source_install=True) is False
     monkeypatch.setenv("UVICORN_RELOAD", "false")
-    assert _reload_enabled("127.0.0.1") is False
+    assert _reload_enabled("127.0.0.1", source_install=True) is False
     monkeypatch.setenv("UVICORN_RELOAD", "true")
-    assert _reload_enabled("0.0.0.0") is True
+    assert _reload_enabled("0.0.0.0", source_install=True) is True

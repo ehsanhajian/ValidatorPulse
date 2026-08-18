@@ -47,6 +47,7 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -U pip
 pip install validator-pulse
+validator-pulse --help
 ```
 
 2. Demo with no config file:
@@ -162,6 +163,7 @@ docker compose up --build
 | --- | --- |
 | `python3: command not found` or version &lt; 3.11 | Install Python 3.11+ and retry Option A or B |
 | `No module named validator_pulse` | venv not active, or (Option B) you skipped `pip install -e .` |
+| `Address already in use` / port 3000 busy | Another process (often a previous `validator-pulse`) holds the port. Stop it, or `validator-pulse --port 3001` |
 | Browser cannot connect to `:3000` | Options A/B only. Option C is [http://127.0.0.1](http://127.0.0.1) (port 80) |
 | Browser cannot connect to port 80 | Option C: `docker compose up` is not running, or another process owns `:80` |
 | `UnsupportedChainError` / HTTP 400 | Typo in `CHAIN`, or comma-separated chains |
