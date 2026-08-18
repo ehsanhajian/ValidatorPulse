@@ -11,6 +11,7 @@ def test_dashboard_assets_ship_with_package() -> None:
     assert (ROOT / "templates" / "dashboard.html").is_file()
     assert (ROOT / "static" / "styles.css").is_file()
     assert (ROOT / "static" / "app.js").is_file()
+    assert (ROOT / "data" / "env.example").is_file()
     assert ROOT == Path(__import__("validator_pulse").__file__).resolve().parent
 
 
@@ -30,6 +31,7 @@ def test_pages_landing_covers_acceptance() -> None:
     assert "images/dashboard-ethereum.png" in html
     assert "github.com/ehsanhajian/ValidatorPulse#installation" in html
     assert "pip install validator-pulse" in html
+    assert "validator-pulse init" in html
     assert "pypi.org/project/validator-pulse" in html
     assert "not on PyPI yet" not in html
     assert (REPO / "docs" / "images" / "dashboard-ethereum.png").is_file()
@@ -40,6 +42,7 @@ def test_readme_install_leads_with_pypi() -> None:
     text = (REPO / "README.md").read_text()
     install = text.split("## Installation", 1)[1].split("## What it monitors", 1)[0]
     assert "pip install validator-pulse" in install
+    assert "validator-pulse init" in install
     assert "not available yet" not in install
     assert "git clone https://github.com/ehsanhajian/ValidatorPulse.git" in install
     assert "pip install -e ." in install

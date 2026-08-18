@@ -47,25 +47,13 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -U pip
 pip install validator-pulse
-validator-pulse --help
+validator-pulse init               # writes .env.local in this directory
+validator-pulse                    # prints config path + docs, then starts
 ```
 
-2. Demo with no config file:
+`validator-pulse --help` shows the same pointers. The app reads `.env.local`, then `.env`, from the **current working directory** (not from the package). Leave `DEMO_MODE=true` and `CHAIN=ethereum` for the first run.
 
-```bash
-CHAIN=ethereum DEMO_MODE=true validator-pulse
-```
-
-Or download the sample env (it is **not** inside the wheel) and start from that directory:
-
-```bash
-curl -fsSL -o .env.local https://raw.githubusercontent.com/ehsanhajian/ValidatorPulse/main/.env.example
-validator-pulse
-```
-
-The app reads `.env.local`, then `.env`, from the current working directory. Leave `DEMO_MODE=true` and `CHAIN=ethereum` for the first run.
-
-3. Open [http://127.0.0.1:3000](http://127.0.0.1:3000). You should see the Ethereum demo dashboard.
+2. Open [http://127.0.0.1:3000](http://127.0.0.1:3000). You should see the Ethereum demo dashboard.
 
 **Go live:** edit `.env.local`, then Ctrl+C and start `validator-pulse` again.
 

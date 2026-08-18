@@ -57,7 +57,7 @@ validator-pulse = "validator_pulse.__main__:main"
 include = ["validator_pulse*"]
 
 [tool.setuptools.package-data]
-validator_pulse = ["templates/*", "static/*"]
+validator_pulse = ["templates/*", "static/*", "data/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

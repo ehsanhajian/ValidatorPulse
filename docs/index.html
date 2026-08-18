@@ -129,8 +129,9 @@
     <p>Python 3.11+. Demo mode needs no node. One <code>CHAIN</code> per process. Full checkout and Docker Compose steps are in the README.</p>
     <pre>python3 -m venv .venv &amp;&amp; source .venv/bin/activate
 pip install validator-pulse
-CHAIN=ethereum DEMO_MODE=true validator-pulse</pre>
-    <p>Open <a href="http://127.0.0.1:3000">http://127.0.0.1:3000</a>.</p>
+validator-pulse init
+validator-pulse</pre>
+    <p>Config is <code>.env.local</code> in the directory you run from. Open <a href="http://127.0.0.1:3000">http://127.0.0.1:3000</a>.</p>
 
     <footer>
       MIT-licensed. Source and docs:
