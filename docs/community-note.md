@@ -12,7 +12,7 @@ It watches operator duties, consensus health, and host infra so you catch downti
 
 - Landing: https://ehsanhajian.github.io/ValidatorPulse/
 - Repo / README: https://github.com/ehsanhajian/ValidatorPulse
-- Install: `pip install validator-pulse` then `CHAIN=ethereum DEMO_MODE=true validator-pulse` (http://127.0.0.1:3000). Checkout and Compose paths are in the README.
+- Install: `pip install validator-pulse`, then `validator-pulse init` (writes `.env.local` in the current directory) and `validator-pulse`. Docs: https://github.com/ehsanhajian/ValidatorPulse#installation
 
 One chain per process.
 

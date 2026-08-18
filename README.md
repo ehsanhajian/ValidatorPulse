@@ -47,24 +47,13 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -U pip
 pip install validator-pulse
+validator-pulse init               # writes .env.local in this directory
+validator-pulse                    # prints config path + docs, then starts
 ```
 
-2. Demo with no config file:
+`validator-pulse --help` shows the same pointers. The app reads `.env.local`, then `.env`, from the **current working directory** (not from the package). Leave `DEMO_MODE=true` and `CHAIN=ethereum` for the first run.
 
-```bash
-CHAIN=ethereum DEMO_MODE=true validator-pulse
-```
-
-Or download the sample env (it is **not** inside the wheel) and start from that directory:
-
-```bash
-curl -fsSL -o .env.local https://raw.githubusercontent.com/ehsanhajian/ValidatorPulse/main/.env.example
-validator-pulse
-```
-
-The app reads `.env.local`, then `.env`, from the current working directory. Leave `DEMO_MODE=true` and `CHAIN=ethereum` for the first run.
-
-3. Open [http://127.0.0.1:3000](http://127.0.0.1:3000). You should see the Ethereum demo dashboard.
+2. Open [http://127.0.0.1:3000](http://127.0.0.1:3000). You should see the Ethereum demo dashboard.
 
 **Go live:** edit `.env.local`, then Ctrl+C and start `validator-pulse` again.
 
@@ -162,6 +151,7 @@ docker compose up --build
 | --- | --- |
 | `python3: command not found` or version &lt; 3.11 | Install Python 3.11+ and retry Option A or B |
 | `No module named validator_pulse` | venv not active, or (Option B) you skipped `pip install -e .` |
+| `Address already in use` / port 3000 busy | Another process (often a previous `validator-pulse`) holds the port. Stop it, or `validator-pulse --port 3001` |
 | Browser cannot connect to `:3000` | Options A/B only. Option C is [http://127.0.0.1](http://127.0.0.1) (port 80) |
 | Browser cannot connect to port 80 | Option C: `docker compose up` is not running, or another process owns `:80` |
 | `UnsupportedChainError` / HTTP 400 | Typo in `CHAIN`, or comma-separated chains |
