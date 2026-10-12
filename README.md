@@ -307,6 +307,8 @@ Never copy a live consensus key/state directory between nodes (double-sign / tom
 
 ### Solana
 
+![Solana dashboard (demo mode)](docs/images/dashboard-solana.png)
+
 | Required | Example |
 | --- | --- |
 | `SOLANA_RPC_URL` | `http://127.0.0.1:8899` |

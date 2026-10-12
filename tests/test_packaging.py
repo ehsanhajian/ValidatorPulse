@@ -28,12 +28,13 @@ def test_pages_landing_covers_acceptance() -> None:
     html = (REPO / "docs" / "index.html").read_text()
     assert "Self-hosted Solana validator monitoring" in html
     assert "Ethereum" in html and "Polkadot" in html and "Cosmos" in html and "Solana" in html
-    assert "images/dashboard-ethereum.png" in html
+    assert "images/dashboard-solana.png" in html
     assert "github.com/ehsanhajian/ValidatorPulse#installation" in html
     assert "pip install validator-pulse" in html
     assert "validator-pulse init" in html
     assert "pypi.org/project/validator-pulse" in html
     assert "not on PyPI yet" not in html
+    assert (REPO / "docs" / "images" / "dashboard-solana.png").is_file()
     assert (REPO / "docs" / "images" / "dashboard-ethereum.png").is_file()
     assert (REPO / "docs" / ".nojekyll").exists()
 
