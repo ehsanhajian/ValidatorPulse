@@ -2,7 +2,7 @@
 
 **Is my validator operating correctly?**
 
-Self-hosted validator monitoring for Ethereum, Polkadot, Cosmos, Solana, and more — Prometheus metrics and multi-channel alerts. A FastAPI dashboard watches operator duties, consensus health, and host infrastructure so you catch downtime and penalties early.
+Self-hosted **Solana** validator monitoring (vote lag, epoch-credit pace, skip rate, delinquency) — plus Ethereum, Polkadot, Cosmos, and more. Prometheus metrics and multi-channel alerts. A FastAPI dashboard watches operator duties, consensus health, and host infrastructure so you catch downtime and penalties early.
 
 It does **not** scan external security surfaces. One `CHAIN` per process.
 
@@ -51,9 +51,9 @@ validator-pulse init               # writes .env.local in this directory
 validator-pulse                    # prints config path + docs, then starts
 ```
 
-`validator-pulse --help` shows the same pointers. The app reads `.env.local`, then `.env`, from the **current working directory** (not from the package). Leave `DEMO_MODE=true` and `CHAIN=ethereum` for the first run.
+`validator-pulse --help` shows the same pointers. The app reads `.env.local`, then `.env`, from the **current working directory** (not from the package). Leave `DEMO_MODE=true` and set `CHAIN=solana` for the first Solana demo (or `ethereum` for the Ethereum demo).
 
-2. Open [http://127.0.0.1:3000](http://127.0.0.1:3000). You should see the Ethereum demo dashboard.
+2. Open [http://127.0.0.1:3000](http://127.0.0.1:3000). You should see the demo dashboard for the `CHAIN` you set (`solana` or `ethereum`).
 
 **Go live:** edit `.env.local`, then Ctrl+C and start `validator-pulse` again.
 
@@ -64,10 +64,10 @@ validator-pulse                    # prints config path + docs, then starts
 | 3 | That chain’s RPC URL and identifiers (copy the matching block from [`.env.example`](.env.example) or [Per-chain setup](#per-chain-setup)) |
 
 ```env
-CHAIN=ethereum
+CHAIN=solana
 DEMO_MODE=false
-BEACON_API_URL=http://127.0.0.1:5052
-VALIDATOR_INDICES=123456
+SOLANA_RPC_URL=http://127.0.0.1:8899
+VALIDATOR_VOTE_ACCOUNTS=Vote1111...
 ```
 
 ### Option B — Git checkout (venv)
@@ -172,10 +172,10 @@ Adapters supply labels (`risk_label`, duty names, consensus node name). Scoring,
 
 | `CHAIN` | Identifiers | RPC / source | Notes |
 | --- | --- | --- | --- |
+| `solana` | `VALIDATOR_VOTE_ACCOUNTS` | `SOLANA_RPC_URL` | Vote lag, credit pace, skip rate, delinquent. Optional `SOLANA_IDENTITY_PUBKEYS` |
 | `ethereum` | `VALIDATOR_INDICES`, `VALIDATOR_PUBKEYS` | `BEACON_API_URL` | Beacon index / BLS pubkey — not an execution wallet |
 | `polkadot` | `COLLATOR_ADDRESSES` or `VALIDATOR_STASH_ADDRESSES` | `SUBSTRATE_RPC_URL` | Collator (default) or relay via `POLKADOT_ROLE` / `polkadot-relay` |
 | `cosmos` | `COSMOS_VALIDATOR_OPERATOR_ADDRESSES` | `COSMOS_REST_URL`, `COSMOS_RPC_URL` | `COSMOS_PROFILE=cosmoshub` or `celestia` |
-| `solana` | `VALIDATOR_VOTE_ACCOUNTS` | `SOLANA_RPC_URL` | Optional `SOLANA_IDENTITY_PUBKEYS` |
 | `near` | `NEAR_VALIDATOR_ACCOUNT_IDS` | `NEAR_RPC_URL` | Optional nearcore metrics |
 | `cardano` | `CARDANO_POOL_IDS` | `CARDANO_TRACER_URL` | Reward risk only — no pool-stake slash |
 | `tezos` | `TEZOS_BAKER_ADDRESSES` | `TEZOS_RPC_URL` | Octez protocol RPC |
@@ -190,7 +190,7 @@ Adapters supply labels (`risk_label`, duty names, consensus node name). Scoring,
 | `ton` | `TON_ADNL_ADDRESSES` | Validation API | Null QoS efficiency is not 0% |
 
 ```env
-CHAIN=ethereum
+CHAIN=solana
 ```
 
 ## RPC and TLS
@@ -312,8 +312,16 @@ Never copy a live consensus key/state directory between nodes (double-sign / tom
 | `SOLANA_RPC_URL` | `http://127.0.0.1:8899` |
 | `VALIDATOR_VOTE_ACCOUNTS` | vote pubkeys |
 | `ALERT_SKIP_RATE_ABOVE` | `10` (percent) |
+| `ALERT_VOTE_LAG_SLOTS` | `64` (slots behind cluster tip) |
 
-Optional: `SOLANA_IDENTITY_PUBKEYS` when vote accounts are unknown. Credits → primary duty; skip rate → secondary / risk; delinquents → critical.
+Optional: `SOLANA_IDENTITY_PUBKEYS` when vote accounts are unknown.
+
+Live Solana scoring uses cluster RPC only (no invented 100k credit baseline):
+
+- **Vote lag** — `lastVote` vs current slot. Warns before the account is marked delinquent.
+- **Epoch-credit pace** — this epoch’s credits vs last epoch × epoch progress.
+- **Skip rate** — `getBlockProduction` leader slots vs blocks produced.
+- **Delinquent** — `getVoteAccounts` delinquent set → critical.
 
 ### NEAR
 
@@ -526,6 +534,8 @@ Restart after changing `.env.local` (or rely on reload with `python -m validator
 | `ALERT_EFFECTIVENESS_BELOW` | Effectiveness &lt; N% | `95` |
 | `ALERT_SLASHING_RISK_ABOVE` | Risk score ≥ N | `40` |
 | `ALERT_LOW_ERA_POINTS_BELOW` | Relay era points &lt; N | `40` |
+| `ALERT_SKIP_RATE_ABOVE` | Solana leader skip % ≥ N | `10` |
+| `ALERT_VOTE_LAG_SLOTS` | Solana last-vote lag ≥ N slots | `64` |
 | `ALERT_DISK_USAGE_ABOVE` / `ALERT_CLOCK_DRIFT_MS` | Host thresholds | `85` / `500` |
 
 ## Alerts

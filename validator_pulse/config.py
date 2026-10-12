@@ -153,6 +153,7 @@ class Settings(BaseSettings):
     alert_slashing_risk_above: float = 40
     alert_low_era_points_below: int = 40
     alert_skip_rate_above: float = 10.0
+    alert_vote_lag_slots: int = 64
     alert_cardano_kes_warning: int = 5
     alert_cardano_kes_critical: int = 1
     alert_tezos_remaining_misses_below: int = 2

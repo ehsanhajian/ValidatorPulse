@@ -75,6 +75,8 @@ async def collect_solana_consensus(rpc_url: str) -> ConsensusHealth:
             connected_peers=0,
             status=_consensus_status(reachable=True, syncing=syncing),
             last_error=None if healthy else f"getHealth={health!r}",
+            epoch_slot_index=slot_index,
+            epoch_slots=slots_in_epoch,
         )
     except Exception as exc:  # noqa: BLE001
         return ConsensusHealth(
@@ -88,23 +90,53 @@ async def collect_solana_consensus(rpc_url: str) -> ConsensusHealth:
             connected_peers=0,
             status="critical",
             last_error=format_transport_error(exc),
+            epoch_slot_index=0,
+            epoch_slots=0,
         )
+
+
+def _epoch_credit_delta(row: Any) -> tuple[int, int]:
+    """Return (epoch, credits earned in that epoch) from one epochCredits row."""
+    if not isinstance(row, (list, tuple)) or len(row) < 2:
+        return 0, 0
+    epoch = int(row[0])
+    if len(row) >= 3:
+        return epoch, max(0, int(row[1]) - int(row[2]))
+    return epoch, max(0, int(row[1]))
+
+
+def expected_credits_from_pace(
+    *,
+    credits_earned: int,
+    previous_epoch_credits: int,
+    slot_index: int,
+    slots_in_epoch: int,
+) -> int:
+    """Pace this epoch from last epoch's credits. Do not invent a 100k baseline."""
+    if previous_epoch_credits > 0 and slots_in_epoch > 0:
+        progress = min(1.0, max(0.0, slot_index / slots_in_epoch))
+        paced = int(previous_epoch_credits * progress)
+        return max(paced, credits_earned, 1)
+    if credits_earned > 0:
+        return credits_earned
+    return 1
+
+
+def vote_lag_slots(head_slot: int, last_vote: int) -> int:
+    if head_slot <= 0 or last_vote <= 0:
+        return 0
+    return max(0, head_slot - last_vote)
 
 
 def _normalize_vote_entry(raw: dict[str, Any], *, delinquent: bool) -> dict[str, Any]:
     epoch_credits = raw.get("epochCredits") or []
     credits_earned = 0
+    previous_epoch_credits = 0
     current_epoch = 0
     if epoch_credits:
-        last = epoch_credits[-1]
-        if isinstance(last, (list, tuple)) and len(last) >= 3:
-            current_epoch = int(last[0])
-            credits = int(last[1])
-            previous = int(last[2])
-            credits_earned = max(0, credits - previous)
-        elif isinstance(last, (list, tuple)) and len(last) >= 2:
-            current_epoch = int(last[0])
-            credits_earned = int(last[1])
+        current_epoch, credits_earned = _epoch_credit_delta(epoch_credits[-1])
+        if len(epoch_credits) >= 2:
+            _, previous_epoch_credits = _epoch_credit_delta(epoch_credits[-2])
 
     return {
         "vote_pubkey": str(raw.get("votePubkey") or ""),
@@ -115,6 +147,7 @@ def _normalize_vote_entry(raw: dict[str, Any], *, delinquent: bool) -> dict[str,
         "root_slot": int(raw.get("rootSlot") or 0),
         "epoch_vote_account": bool(raw.get("epochVoteAccount")),
         "epoch_credits_earned": credits_earned,
+        "previous_epoch_credits": previous_epoch_credits,
         "epoch": current_epoch,
         "delinquent": delinquent,
     }

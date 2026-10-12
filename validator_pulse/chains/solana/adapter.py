@@ -8,9 +8,11 @@ from validator_pulse.chains.solana.demo import (
 )
 from validator_pulse.chains.solana.rpc import (
     collect_solana_consensus,
+    expected_credits_from_pace,
     fetch_block_production_skip_rate,
     fetch_vote_account,
     fetch_vote_accounts_by_identity,
+    vote_lag_slots,
 )
 from validator_pulse.config import Settings
 from validator_pulse.http_client import (
@@ -194,12 +196,17 @@ class SolanaAdapter:
         identity = str(info.get("node_pubkey") or "")
         delinquent = bool(info.get("delinquent"))
         credits = int(info.get("epoch_credits_earned") or 0)
-        # Use a soft expected baseline from recent credits when available.
-        expected_credits = max(credits, 1) if credits else 100_000
-        # When delinquent, treat most credits as missed relative to a healthy baseline.
-        if delinquent:
-            expected_credits = max(expected_credits, 100_000)
-            credits = min(credits, int(expected_credits * 0.05))
+        previous_credits = int(info.get("previous_epoch_credits") or 0)
+        last_vote = int(info.get("last_vote") or 0)
+        lag = vote_lag_slots(consensus.head_slot, last_vote)
+        expected_credits = expected_credits_from_pace(
+            credits_earned=credits,
+            previous_epoch_credits=previous_credits,
+            slot_index=consensus.epoch_slot_index,
+            slots_in_epoch=consensus.epoch_slots,
+        )
+        if delinquent and previous_credits > 0:
+            expected_credits = max(expected_credits, previous_credits)
 
         leader_slots = 0
         produced = 0
@@ -246,6 +253,20 @@ class SolanaAdapter:
                     kind="delinquent",
                     severity="critical",
                     message="Vote account is delinquent (last vote lagging cluster tip).",
+                    confirmed=True,
+                )
+            )
+        elif lag >= settings.alert_vote_lag_slots:
+            risk = max(risk, 70.0)
+            status = "vote_lag"
+            events.append(
+                ProtocolEvent(
+                    kind="vote_lag",
+                    severity="warning",
+                    message=(
+                        f"Last vote is {lag} slots behind the cluster tip "
+                        f"(threshold {settings.alert_vote_lag_slots})."
+                    ),
                     confirmed=True,
                 )
             )

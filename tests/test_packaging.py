@@ -26,7 +26,7 @@ def test_dockerfile_installs_package_without_root_assets() -> None:
 
 def test_pages_landing_covers_acceptance() -> None:
     html = (REPO / "docs" / "index.html").read_text()
-    assert "Self-hosted validator monitoring" in html
+    assert "Self-hosted Solana validator monitoring" in html
     assert "Ethereum" in html and "Polkadot" in html and "Cosmos" in html and "Solana" in html
     assert "images/dashboard-ethereum.png" in html
     assert "github.com/ehsanhajian/ValidatorPulse#installation" in html

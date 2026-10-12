@@ -5,6 +5,7 @@ import asyncio
 from validator_pulse.alerts import evaluate_alerts
 from validator_pulse.chains.solana.adapter import SolanaAdapter
 from validator_pulse.chains.solana.demo import demo_vote_account
+from validator_pulse.chains.solana.rpc import expected_credits_from_pace, vote_lag_slots
 from validator_pulse.collectors.infrastructure import collect_infrastructure
 from validator_pulse.config import Settings
 from validator_pulse.models import PulseSnapshot
@@ -19,10 +20,11 @@ def test_solana_demo_collect() -> None:
     assert adapter.display_name == "Solana"
     assert adapter.primary_duty_label == "Epoch credits"
     assert adapter.missed_duty_label == "Skipped slots"
-    assert len(collection.operators) == 4
+    assert len(collection.operators) == 5
     statuses = {op.status for op in collection.operators}
     assert "delinquent" in statuses
     assert "high_skip" in statuses
+    assert "vote_lag" in statuses
     assert any(op.operator_id.startswith("Vote") for op in collection.operators)
     delinquent = next(op for op in collection.operators if op.status == "delinquent")
     assert delinquent.risk_score == 100
@@ -43,6 +45,30 @@ def test_solana_demo_pulse_alerts_and_token() -> None:
     titles = " ".join(a.title.lower() for a in alerts)
     assert "delinquent" in titles
     assert "skip rate" in titles
+    assert "vote lag" in titles
+
+
+def test_solana_credit_pace_and_vote_lag() -> None:
+    assert expected_credits_from_pace(
+        credits_earned=50_000,
+        previous_epoch_credits=400_000,
+        slot_index=216_000,
+        slots_in_epoch=432_000,
+    ) == 200_000
+    assert expected_credits_from_pace(
+        credits_earned=80_000,
+        previous_epoch_credits=0,
+        slot_index=100,
+        slots_in_epoch=432_000,
+    ) == 80_000
+    assert expected_credits_from_pace(
+        credits_earned=0,
+        previous_epoch_credits=0,
+        slot_index=0,
+        slots_in_epoch=0,
+    ) == 1
+    assert vote_lag_slots(250_000_000, 249_999_920) == 80
+    assert vote_lag_slots(0, 10) == 0
 
 
 def test_solana_live_requires_vote_or_identity() -> None:

@@ -233,19 +233,21 @@ def evaluate_alerts(snapshot: PulseSnapshot, settings: Settings) -> list[AlertEv
                         )
                     )
 
-        # Solana: delinquency + high skip-rate protocol events.
+        # Solana: delinquency, vote lag, and high skip-rate protocol events.
         if snapshot.chain == "solana":
             for event in v.protocol_events:
-                if event.kind in {"delinquent", "high_skip_rate"}:
+                if event.kind in {"delinquent", "high_skip_rate", "vote_lag"}:
+                    if event.kind == "delinquent":
+                        title = f"Validator delinquent: {label}"
+                    elif event.kind == "vote_lag":
+                        title = f"Vote lag on validator {label}"
+                    else:
+                        title = f"High skip rate on validator {label}"
                     alerts.append(
                         AlertEvent(
                             id=f"{event.kind}-{label}-{now}",
                             severity=event.severity,
-                            title=(
-                                f"Validator delinquent: {label}"
-                                if event.kind == "delinquent"
-                                else f"High skip rate on validator {label}"
-                            ),
+                            title=title,
                             message=event.message,
                             source="validator",
                             created_at=now,
