@@ -45,6 +45,7 @@ ProtocolEventKind = Literal[
     "kes_expired",
     "delinquent",
     "high_skip_rate",
+    "vote_lag",
     "rpc_error",
     "fined",
     "other",
@@ -287,6 +288,8 @@ class ConsensusHealth(BaseModel):
     connected_peers: int
     status: HealthStatus
     last_error: str | None = None
+    epoch_slot_index: int = 0
+    epoch_slots: int = 0
 
 
 class InfrastructureHealth(BaseModel):

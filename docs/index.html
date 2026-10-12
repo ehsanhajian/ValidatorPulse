@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ValidatorPulse — self-hosted validator monitoring</title>
-  <meta name="description" content="Self-hosted validator monitoring for Ethereum, Polkadot, Cosmos, Solana, and more — Prometheus metrics and multi-channel alerts." />
+  <meta name="description" content="Self-hosted Solana validator monitoring — vote lag, credit pace, skip rate, alerts. Also Ethereum, Polkadot, Cosmos, and more." />
   <link rel="canonical" href="https://ehsanhajian.github.io/ValidatorPulse/" />
   <meta property="og:title" content="ValidatorPulse" />
-  <meta property="og:description" content="Self-hosted validator monitoring for Ethereum, Polkadot, Cosmos, Solana, and more — Prometheus metrics and multi-channel alerts." />
+  <meta property="og:description" content="Self-hosted Solana validator monitoring — vote lag, credit pace, skip rate, alerts." />
   <meta property="og:image" content="https://ehsanhajian.github.io/ValidatorPulse/images/dashboard-ethereum.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -90,8 +90,8 @@
     <p class="eyebrow">Validator health</p>
     <h1>ValidatorPulse</h1>
     <p class="lede">
-      Self-hosted validator monitoring for Ethereum, Polkadot, Cosmos, Solana, and more —
-      Prometheus metrics and multi-channel alerts.
+      Self-hosted Solana validator monitoring: vote lag, epoch-credit pace, skip rate,
+      and delinquency — Prometheus metrics and alerts. Other chains still work.
     </p>
     <div class="actions">
       <a class="button primary" href="https://github.com/ehsanhajian/ValidatorPulse#installation">Install from the README</a>
@@ -101,10 +101,10 @@
 
     <h2>Supported chains</h2>
     <ul class="chains">
+      <li>Solana</li>
       <li>Ethereum</li>
       <li>Polkadot</li>
       <li>Cosmos</li>
-      <li>Solana</li>
       <li>NEAR</li>
       <li>Cardano</li>
       <li>Tezos</li>
@@ -122,7 +122,7 @@
     <h2>Dashboard</h2>
     <figure>
       <img src="images/dashboard-ethereum.png" alt="ValidatorPulse Ethereum dashboard in demo mode" />
-      <figcaption>Ethereum dashboard (demo mode). The README has the Polkadot collator view and live-mode setup.</figcaption>
+      <figcaption>Demo dashboard. Set <code>CHAIN=solana</code> for vote lag, credit pace, skip rate, and delinquency. README has live-mode setup.</figcaption>
     </figure>
 
     <h2>Install</h2>

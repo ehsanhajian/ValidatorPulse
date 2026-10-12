@@ -16,6 +16,10 @@ build/
 .env*
 !.env.example
 
+# Local grant / office-hours notes (do not publish)
+docs/esp-office-hours.md
+docs/solana-superteam.md
+
 # OS / IDE
 .DS_Store
 .idea/

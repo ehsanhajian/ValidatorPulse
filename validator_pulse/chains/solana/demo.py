@@ -30,6 +30,10 @@ _DEMO_ACCOUNTS = {
         "Vote44444444444444444444444444444445",
         "Node44444444444444444444444444444445",
     ),
+    "vote_lag": (
+        "Vote55555555555555555555555555555556",
+        "Node55555555555555555555555555555556",
+    ),
 }
 
 
@@ -65,8 +69,8 @@ def build_demo_validators(
     *,
     vote_accounts: list[str] | None = None,
 ) -> list[ValidatorStats]:
-    """Offline demo: healthy, high skip, delinquent, low credits."""
-    kinds = ("healthy", "high_skip", "delinquent", "low_credits")
+    """Offline demo: healthy, high skip, delinquent, low credits, vote lag."""
+    kinds = ("healthy", "high_skip", "delinquent", "low_credits", "vote_lag")
     if vote_accounts:
         planned = [
             (addr, kinds[i % len(kinds)]) for i, addr in enumerate(vote_accounts)
@@ -98,6 +102,12 @@ def build_demo_validators(
             delinquent = True
             status = "delinquent"
             stake = 100_000 * lamports
+        elif kind == "vote_lag":
+            leader_slots, produced = 180, 174
+            credits, expected_credits = 380_000, 400_000
+            delinquent = False
+            status = "vote_lag"
+            stake = 800_000 * lamports
         else:  # low_credits
             leader_slots, produced = 180, 170
             credits, expected_credits = 80_000, 400_000
@@ -133,6 +143,16 @@ def build_demo_validators(
                     kind="delinquent",
                     severity="critical",
                     message="Vote account is delinquent (last vote lagging cluster tip).",
+                    confirmed=True,
+                )
+            )
+        elif kind == "vote_lag":
+            risk = max(risk, 70.0)
+            events.append(
+                ProtocolEvent(
+                    kind="vote_lag",
+                    severity="warning",
+                    message="Last vote is 80 slots behind the cluster tip (threshold 64).",
                     confirmed=True,
                 )
             )
